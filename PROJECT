@@ -1,0 +1,3 @@
+version: "1"
+domain: aws.gotopple.com
+repo: github.com/gotopple/kloudformation
