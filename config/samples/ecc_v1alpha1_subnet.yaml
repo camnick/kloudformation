@@ -1,0 +1,11 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: Subnet
+metadata:
+  name: vpc-sample2-public1
+spec:
+  availabilityZone: "us-west-2a"
+  cidrBlock: "10.0.60.128/25"
+  vpcName: vpc-sample2
+  tags:
+   - key: name
+     value: public1

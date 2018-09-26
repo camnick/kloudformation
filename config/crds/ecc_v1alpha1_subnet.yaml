@@ -1,0 +1,59 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: subnets.ecc.aws.gotopple.com
+spec:
+  group: ecc.aws.gotopple.com
+  names:
+    kind: Subnet
+    plural: subnets
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            availabilityZone:
+              type: string
+            cidrBlock:
+              type: string
+            mapPublicIpOnLaunch:
+              type: boolean
+            tags:
+              items:
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                required:
+                - key
+                - value
+                type: object
+              type: array
+            vpcName:
+              type: string
+          required:
+          - availabilityZone
+          - cidrBlock
+          - vpcName
+          - tags
+          type: object
+        status:
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

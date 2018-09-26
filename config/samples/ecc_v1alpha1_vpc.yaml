@@ -1,0 +1,12 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: VPC
+metadata:
+  name: vpc-sample1
+spec:
+  cidrBlock: "10.0.50.0/24"
+  enableDnsSupport: true
+  enableDnsHostnames: true
+  instanceTenancy: default
+  tags:
+    - key: name
+      value: my-awesome-vpc1
