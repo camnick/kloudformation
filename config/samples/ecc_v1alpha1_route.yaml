@@ -1,0 +1,9 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: Route
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: route-sample
+spec:
+  DestinationCidrBlock: "0.0.0.0/0"
+  RouteTableName: routetable-sample

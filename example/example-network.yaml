@@ -46,3 +46,15 @@ spec:
   tags:
    - key: Name
      value: public-c
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: RouteTable
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: routetable-sample
+spec:
+  vpcName: my-super-vpc2
+  tags:
+    - key: sample-key
+      value: sample-value
