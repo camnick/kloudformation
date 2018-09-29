@@ -21,6 +21,17 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            destinationCidrBlock:
+              type: string
+            gatewayId:
+              type: string
+            routeTableName:
+              type: string
+          required:
+          - destinationCidrBlock
+          - gatewayId
+          - routeTableName
           type: object
         status:
           type: object
