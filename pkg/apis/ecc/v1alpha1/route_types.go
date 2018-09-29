@@ -27,15 +27,15 @@ import (
 type RouteSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	DestinationCidrBlock string `json:"destinationCidrBlock"`
-	//DestinationIpv6CidrBlock      string `json:"destinationIpv6CidrBlock"`
-	//EgressOnlyInternetGatewayName string `json:"egressOnlyInternetGatewayName"`
-	GatewayName string `json:"gatewayName"`
-	//InstanceName                  string `json:"instanceName"`
-	//NatGatewayName                string `json:"natGatewayName"`
-	//NetworkInterfaceName          string `json:"networkInterfaceName"`
-	RouteTableName string `json:"routeTableName"`
-	//VpcPeeringConnectionName      string `json:"vpcPeeringConnectionName"`
+	DestinationCidrBlock				string `json:"destinationCidrBlock"`
+  DestinationIpv6CidrBlock 		string `json:"destinationIpv6CidrBlock"` //
+  EgressOnlyInternetGatewayName string `json:"egressOnlyInternetGatewayId"`
+  GatewayName 									string `json:"gatewayId"`
+  InstanceName 									string `json:"instanceId"`
+  NatGatewayName 								string `json:"natGatewayId"`
+  NetworkInterfaceName				string `json:"networkInterfaceId"`
+  RouteTableName 							string `json:"routeTableName"`
+  VpcPeeringConnectionName 			string `json:"vpcPeeringConnectionId"`
 }
 
 // RouteStatus defines the observed state of Route

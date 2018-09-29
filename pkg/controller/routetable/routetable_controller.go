@@ -111,7 +111,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 	svc := ec2.New(r.sess)
 	// get the RouteTableId out of the annotations
 	// if absent then create
-	routeTableid, ok := instance.ObjectMeta.Annotations[`routeTableid`]
+	routetableid, ok := instance.ObjectMeta.Annotations[`routetableid`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTable in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRouteTable(&ec2.CreateRouteTableInput{
@@ -125,9 +125,10 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, fmt.Errorf(`CreateRouteTableOutput was nil`)
 		}
 
-		routeTableid = *createOutput.RouteTable.RouteTableId
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routeTableid)
-		instance.ObjectMeta.Annotations[`routeTableid`] = routeTableid
+		routetableid = *createOutput.RouteTable.RouteTableId
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routetableid)
+		instance.ObjectMeta.Annotations[`routetableid`] = routetableid
+		instance.ObjectMeta.Annotations[`fuckface`] = "McShitPiss"
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routeTables.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
@@ -145,14 +146,13 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteRouteTable(&ec2.DeleteRouteTableInput{
-				RouteTableId: aws.String(routeTableid),
+				RouteTableId: aws.String(routetableid),
 			})
-
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupRouteTableId`: routeTableid},
+					map[string]string{`cleanupRouteTableId`: routetableid},
 					`Warning`,
 					`DeleteFailure`,
 					"Unable to delete the RouteTable: %s", ierr.Error())
@@ -170,7 +170,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupRouteTableId`: routeTableid},
+					map[string]string{`cleanupRouteTableId`: routetableid},
 					`Warning`,
 					`DeleteAmbiguity`,
 					"Attempt to delete the RouteTable recieved a nil response")
@@ -191,7 +191,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 				})
 			}
 			tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
-				Resources: []*string{aws.String(routeTableid)},
+				Resources: []*string{aws.String(routetableid)},
 				Tags:      ts,
 			})
 			if err != nil {
@@ -212,10 +212,9 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
-		fmt.Println(`fuck balls`)
 		// must delete
 		deleteOutput, err := svc.DeleteRouteTable(&ec2.DeleteRouteTableInput{
-			RouteTableId: aws.String(routeTableid),
+			RouteTableId: aws.String(routetableid),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the RouteTable: %s", err.Error())
