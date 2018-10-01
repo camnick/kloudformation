@@ -70,4 +70,16 @@ metadata:
 spec:
   destinationCidrBlock: "192.168.1.0/24"
   routeTableName: routetable-sample
-  gatewayName: AGateway
+  gatewayName: internetgateway-sample
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: InternetGateway
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: internetgateway-sample
+spec:
+  tags:
+    - key: Name
+      value: FACK
+  vpcName: example-network

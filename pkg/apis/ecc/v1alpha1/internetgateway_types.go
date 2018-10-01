@@ -23,23 +23,17 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// RouteSpec defines the desired state of Route
-type RouteSpec struct {
+// InternetGatewaySpec defines the desired state of InternetGateway
+type InternetGatewaySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	DestinationCidrBlock string `json:"destinationCidrBlock"`
-	//DestinationIpv6CidrBlock      string `json:"destinationIpv6CidrBlock"` //
-	//EgressOnlyInternetGatewayName string `json:"egressOnlyInternetGatewayId"`
-	GatewayName string `json:"gatewayName"` //InternetGateway is what this is about.
-	//InstanceName                  string `json:"instanceId"`
-	//NatGatewayName                string `json:"natGatewayId"`
-	//NetworkInterfaceName          string `json:"networkInterfaceId"`
-	RouteTableName string `json:"routeTableName"`
-	//VpcPeeringConnectionName      string `json:"vpcPeeringConnectionId"`
+	Tags    []ResourceTag `json:"tags"`
+	VPCName string        `json:"vpcName"`
+	//VPNGatewayName				String	`json:vpnGatewayName`
 }
 
-// RouteStatus defines the observed state of Route
-type RouteStatus struct {
+// InternetGatewayStatus defines the observed state of InternetGateway
+type InternetGatewayStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -47,25 +41,25 @@ type RouteStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Route is the Schema for the routes API
+// InternetGateway is the Schema for the internetgateways API
 // +k8s:openapi-gen=true
-type Route struct {
+type InternetGateway struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   RouteSpec   `json:"spec,omitempty"`
-	Status RouteStatus `json:"status,omitempty"`
+	Spec   InternetGatewaySpec   `json:"spec,omitempty"`
+	Status InternetGatewayStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// RouteList contains a list of Route
-type RouteList struct {
+// InternetGatewayList contains a list of InternetGateway
+type InternetGatewayList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Route `json:"items"`
+	Items           []InternetGateway `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Route{}, &RouteList{})
+	SchemeBuilder.Register(&InternetGateway{}, &InternetGatewayList{})
 }

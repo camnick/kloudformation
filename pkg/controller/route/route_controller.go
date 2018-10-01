@@ -99,9 +99,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	routeTable := &eccv1alpha1.RouteTable{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
-	print(routeTable.ObjectMeta.Annotations[`routeTableId`], " is the routeTableId that will be referenced.")
+	//print(routeTable.ObjectMeta.Annotations[`routeTableId`], " is the routeTableId that will be referenced. ")
+	//print(instance.Spec.RouteTableName, " Is the name of the route table in question. ")
 	if err != nil {
 		if errors.IsNotFound(err) {
+			print(" Something went wrong with pulling the relevant RouteTable info. It looks to not exist.")
+			//return reconcile.Result{}, err
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
@@ -109,17 +112,31 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
+	internetGateway := &eccv1alpha1.InternetGateway{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
+	//print(internetGateway.ObjectMeta.Annotations[`internetGatewayId`], " is the internetGatewayId that will be referenced.")
+	//print(instance.Spec.GatewayName, " Is the name of the InternetGateway in question. ")
+	if err != nil {
+		//print(" Something went wrong with pulling the relevant InternetGateway info.")
+		if errors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+	}
+
 	svc := ec2.New(r.sess)
 	// get the RouteId out of the annotations
 	// if absent then create
-	routeCreated, ok := instance.ObjectMeta.Annotations[`routeCreated`]
+	_, ok := instance.ObjectMeta.Annotations[`routeCreated`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Route in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRoute(&ec2.CreateRouteInput{
 			DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
 			//DestinationIpv6CidrBlock: aws.String(instance.Spec.DestinationIpv6CidrBlock),
 			//EgressOnlyInternetGatewayName:
-			GatewayId: aws.String("igw-0327c065"),
+			GatewayId: aws.String(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]),
 			//InstanceName: aws.String(instance.Spec.InstanceName),
 			//NatGatewayName: aws.String(instance.Spec.NatGatewayName),
 			//NetworkInterfaceName: aws.String(instance.Spec.NetworkInterfaceName),
@@ -134,10 +151,9 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			return reconcile.Result{}, fmt.Errorf(`CreateRouteOutput was nil`)
 		}
 
-		routeCreated = fmt.Sprint(*createOutput.Return)
-		print(string(routeCreated))
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route (%s) as part of RouteTable", routeTable.ObjectMeta.Annotations[`routeTableId`])
-		instance.ObjectMeta.Annotations[`associatedRouteTable`] = routeTable.ObjectMeta.Annotations[`routeTableId`]
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route and added to RouteTable (%s)", routeTable.ObjectMeta.Annotations[`routeTableId`])
+		instance.ObjectMeta.Annotations[`associatedRouteTableId`] = routeTable.ObjectMeta.Annotations[`routeTableId`]
+		//print("checking that both values are working: ", instance.ObjectMeta.Annotations[`associatedRouteTableId`], routeTable.ObjectMeta.Annotations[`routeTableId`])
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
@@ -153,16 +169,16 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				`Warning`,
 				`ResourceUpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
-
 			deleteOutput, ierr := svc.DeleteRoute(&ec2.DeleteRouteInput{
-				RouteTableId:         aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
+				RouteTableId:         aws.String(instance.ObjectMeta.Annotations[`associatedRouteTableId`]),
 				DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
 			})
 			if ierr != nil {
+				print("the attempt returned a non nil error")
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupRouteId`: "routeid"},
+					map[string]string{`cleanupRoute`: "routeid"},
 					`Warning`,
 					`DeleteFailure`,
 					"Unable to delete the Route: %s", ierr.Error())
@@ -179,10 +195,11 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				}
 
 			} else if deleteOutput == nil {
+				print("delete output was nil")
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupRouteId`: "routeid"},
+					map[string]string{`cleanupRoute`: "routeid"},
 					`Warning`,
 					`DeleteAmbiguity`,
 					"Attempt to delete the Route recieved a nil response")
@@ -228,17 +245,17 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 
 		// must delete
 		_, err = svc.DeleteRoute(&ec2.DeleteRouteInput{
-			RouteTableId:         aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
+			RouteTableId:         aws.String(instance.ObjectMeta.Annotations[`associatedRouteTableId`]),
 			DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Route: %s", err.Error())
-
+			print("deletion failed bitch")
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidRouteID.NotFound`:
+				case `InvalidRoute.NotFound`:
 					// we want to keep going
 					r.events.Eventf(instance, `Success`, `AlreadyDeleted`, "The Route: %s was already deleted", err.Error())
 				default:
@@ -248,13 +265,14 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				return reconcile.Result{}, err
 			}
 		}
-
+		print("going to attempt to remove the finalizer")
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
+		print("if you see this then the route and finalizer are both GONE BITCH")
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Route and removed finalizers")
 	}
 
