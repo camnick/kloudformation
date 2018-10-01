@@ -105,7 +105,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
-	} else if len(routetable.ObjectMeta.Annotations[`routetableid`]) <= 0 {
+	} else if len(routetable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
@@ -123,7 +123,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			//InstanceName: aws.String(instance.Spec.InstanceName),
 			//NatGatewayName: aws.String(instance.Spec.NatGatewayName),
 			//NetworkInterfaceName: aws.String(instance.Spec.NetworkInterfaceName),
-			RouteTableId: aws.String(routetable.ObjectMeta.Annotations[`routetableid`]),
+			RouteTableId: aws.String(routetable.ObjectMeta.Annotations[`routeTableId`]),
 			//VpcPeeringConnectionName: aws.String(instance.Spec.VpcPeeringConnectionName),
 		})
 		if err != nil {
@@ -136,8 +136,8 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 
 		routeCreated = fmt.Sprint(*createOutput.Return)
 		print(routeCreated)
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route (%s) as part of RouteTable", routetable.ObjectMeta.Annotations[`routetableid`])
-		instance.ObjectMeta.Annotations[`associatedRouteTable`] = routetable.ObjectMeta.Annotations[`routetableid`]
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route (%s) as part of RouteTable", routetable.ObjectMeta.Annotations[`routeTableId`])
+		instance.ObjectMeta.Annotations[`associatedRouteTable`] = routetable.ObjectMeta.Annotations[`routeTableId`]
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
@@ -155,7 +155,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteRoute(&ec2.DeleteRouteInput{
-				RouteTableId:         aws.String(routetable.ObjectMeta.Annotations[`routetableid`]),
+				RouteTableId:         aws.String(routetable.ObjectMeta.Annotations[`routeTableId`]),
 				DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
 			})
 			if ierr != nil {
@@ -228,7 +228,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 
 		// must delete
 		_, err = svc.DeleteRoute(&ec2.DeleteRouteInput{
-			RouteTableId:         aws.String(routetable.ObjectMeta.Annotations[`routetableid`]),
+			RouteTableId:         aws.String(routetable.ObjectMeta.Annotations[`routeTableId`]),
 			DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
 		})
 		if err != nil {

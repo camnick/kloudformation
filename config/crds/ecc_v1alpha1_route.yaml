@@ -24,13 +24,13 @@ spec:
           properties:
             destinationCidrBlock:
               type: string
-            gatewayId:
+            gatewayName:
               type: string
             routeTableName:
               type: string
           required:
           - destinationCidrBlock
-          - gatewayId
+          - gatewayName
           - routeTableName
           type: object
         status:

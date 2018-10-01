@@ -58,15 +58,16 @@ spec:
   tags:
     - key: sample-key
       value: sample-value
+    - key: Name
+      value: FUCKBALLS
 ---
-#apiVersion: ecc.aws.gotopple.com/v1alpha1
-#kind: Route
-#metadata:
-#  labels:
-#    controller-tools.k8s.io: "1.0"
-#  name: route-sample
-#spec:
-#  destinationCidrBlock: "192.168.1.0/24"
-#  routeTableName: routetable-sample
-#  gatewayName: AGateway
-#
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: Route
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: route-sample
+spec:
+  destinationCidrBlock: "192.168.1.0/24"
+  routeTableName: routetable-sample
+  gatewayName: AGateway
