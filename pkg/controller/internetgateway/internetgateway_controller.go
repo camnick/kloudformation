@@ -154,7 +154,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 			return reconcile.Result{}, fmt.Errorf(`AttachInternetGatewayOutput was nil`)
 		}
 
-		r.events.Eventf(instance, `Normal`, `ResourceUpdated`, "Attached  AWS InternetGateway to VPC (%s)", vpc.ObjectMeta.Annotations[`vpcid`])
+		r.events.Eventf(instance, `Normal`, `ResourceUpdated`, "Attached AWS InternetGateway to VPC (%s)", vpc.ObjectMeta.Annotations[`vpcid`])
 
 		// set the gateway as attached to a vpc
 		internetGatewayAttached := fmt.Sprint(*createAttachmentOutput)
@@ -250,6 +250,42 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 		}
 
 		// must delete
+
+		//Detach InternetGateway first, then delete.
+
+		// now logging the intent to detach, then will try to detach
+		r.events.Eventf(instance, `Normal`, `ResourceUpdateAttempt`, "Detaching AWS InternetGateway from VPC (%s)", vpc.ObjectMeta.Annotations[`vpcid`])
+
+		_, err = svc.DetachInternetGateway(&ec2.DetachInternetGatewayInput{
+			InternetGatewayId: aws.String(instance.ObjectMeta.Annotations[`internetGatewayId`]),
+			VpcId:             aws.String(vpc.ObjectMeta.Annotations[`vpcid`]),
+		})
+
+		//checking for errors in detaching
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to detach the InternetGateway: %s", err.Error())
+
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case `InvalidInternetGatewayID.NotFound`:
+					// we want to keep going
+					// event type was changed from 'Success' to 'Normal', because i got an error that 'Success' wasn't supported
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The InternetGateway: %s was already deleted", err.Error())
+				default:
+					return reconcile.Result{}, err
+				}
+			} else {
+				return reconcile.Result{}, err
+			}
+		}
+		r.events.Eventf(instance, `Normal`, `ResourceUpdated`, "Detached AWS InternetGateway from VPC (%s)", vpc.ObjectMeta.Annotations[`vpcid`])
+
+		//Deleting the InternetGateway now that it's not attached.
+
+		r.events.Eventf(instance, `Normal`, `ResourceDeleteAttempt`, "Deleting AWS InternetGateway (%s)", instance.ObjectMeta.Annotations[`internetGatewayId`])
+
 		_, err = svc.DeleteInternetGateway(&ec2.DeleteInternetGatewayInput{
 			InternetGatewayId: aws.String(internetGatewayId),
 		})
