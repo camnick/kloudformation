@@ -104,11 +104,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		if errors.IsNotFound(err) {
 			print(" Something went wrong with pulling the relevant RouteTable info. It looks to not exist.")
-			//return reconcile.Result{}, err
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
@@ -119,10 +120,13 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		//print(" Something went wrong with pulling the relevant InternetGateway info.")
 		if errors.IsNotFound(err) {
+			print("the gateway aint ready.")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 	}
 
