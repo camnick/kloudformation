@@ -129,7 +129,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	svc := ec2.New(r.sess)
 	// get the RouteId out of the annotations
 	// if absent then create
-	_, ok := instance.ObjectMeta.Annotations[`routeCreated`]
+	routeCreated, ok := instance.ObjectMeta.Annotations[`routeCreated`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Route in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRoute(&ec2.CreateRouteInput{
@@ -151,10 +151,14 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			return reconcile.Result{}, fmt.Errorf(`CreateRouteOutput was nil`)
 		}
 
+		routeCreated = fmt.Sprint(*createOutput.Return)
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route and added to RouteTable (%s)", routeTable.ObjectMeta.Annotations[`routeTableId`])
 		instance.ObjectMeta.Annotations[`associatedRouteTableId`] = routeTable.ObjectMeta.Annotations[`routeTableId`]
+		instance.ObjectMeta.Annotations[`routeCreated`] = routeCreated
 		//print("checking that both values are working: ", instance.ObjectMeta.Annotations[`associatedRouteTableId`], routeTable.ObjectMeta.Annotations[`routeTableId`])
+		//print("the next line is where the finalizer is applied")
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)
+		//print("**** THE FINALIZER WAS APPLIED***")
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -244,10 +248,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 
 		// must delete
-		_, err = svc.DeleteRoute(&ec2.DeleteRouteInput{
+		deleteOutput, err := svc.DeleteRoute(&ec2.DeleteRouteInput{
 			RouteTableId:         aws.String(instance.ObjectMeta.Annotations[`associatedRouteTableId`]),
 			DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
 		})
+		print("these were the values passed to the deletion func ", instance.ObjectMeta.Annotations[`associatedRouteTableId`], " and ", instance.Spec.DestinationCidrBlock)
+		print("delete output here>", fmt.Sprint(deleteOutput), "< and here")
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Route: %s", err.Error())
 			print("deletion failed bitch")

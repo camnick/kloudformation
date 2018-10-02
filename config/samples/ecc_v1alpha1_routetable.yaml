@@ -5,7 +5,9 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: routetable-sample
 spec:
-  vpcName: vpc-sample2
+  vpcName: example-network
   tags:
     - key: sample-key
       value: sample-value
+    - key: Name
+      value: FUCKBALLS

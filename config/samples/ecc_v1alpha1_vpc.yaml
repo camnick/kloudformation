@@ -1,12 +1,12 @@
 apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: VPC
 metadata:
-  name: vpc-sample1
+  name: example-network
 spec:
-  cidrBlock: "10.0.50.0/24"
+  cidrBlock: "10.20.0.0/16"
   enableDnsSupport: true
   enableDnsHostnames: true
   instanceTenancy: default
   tags:
-    - key: name
-      value: my-awesome-vpc1
+    - key: Name
+      value: my-super-vpc2
