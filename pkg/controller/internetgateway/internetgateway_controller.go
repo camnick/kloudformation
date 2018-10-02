@@ -82,7 +82,7 @@ type ReconcileInternetGateway struct {
 // Reconcile reads that state of the cluster for a InternetGateway object and makes changes based on the state read
 // and what is in the InternetGateway.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=internetGateways,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=internetgateways,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the InternetGateway instance
 	instance := &eccv1alpha1.InternetGateway{}
@@ -113,21 +113,58 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 	// if absent then create
 	internetGatewayId, ok := instance.ObjectMeta.Annotations[`internetGatewayId`]
 	if !ok {
+
+		// log intention to attempt, then attempt
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS InternetGateway in %s", *r.sess.Config.Region)
-		//create an InternetGateway first, Then attach it to a VPC.
-		createOutput, err := svc.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
+		createGatewayOutput, err := svc.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
+
+		//testing only
+		print(createGatewayOutput, " is the createGatewayOutput")
+
+		//catch the errors fromt the create attempt
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		if createOutput == nil {
+		if createGatewayOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`CreateInternetGatewayOutput was nil`)
 		}
 
-		internetGatewayId = *createOutput.InternetGateway.InternetGatewayId
+		// save the output into an id for the gatway, note the success, and then save the id in the object annotations
+		internetGatewayId = *createGatewayOutput.InternetGateway.InternetGatewayId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS InternetGateway (%s)", internetGatewayId)
 		instance.ObjectMeta.Annotations[`internetGatewayId`] = internetGatewayId
-		//moved the finalizer from it's typical spot here down to after the gateway is attached.
+
+		// testing only- confirm the id is saved
+		print(internetGatewayId, " and ", instance.ObjectMeta.Annotations[`internetGatewayId`], " is the internetGatewayId ")
+
+		// now logging the intent to attach, then will try to attach
+		r.events.Eventf(instance, `Normal`, `ResourceUpdateAttempt`, "Attaching AWS InternetGateway to VPC (%s)", vpc.ObjectMeta.Annotations[`vpcid`])
+		createAttachmentOutput, err := svc.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
+			InternetGatewayId: aws.String(internetGatewayId),
+			VpcId:             aws.String(vpc.ObjectMeta.Annotations[`vpcid`]),
+		})
+
+		// checking for errors with the attachment
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Attachment failed: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		if createAttachmentOutput == nil {
+			return reconcile.Result{}, fmt.Errorf(`AttachInternetGatewayOutput was nil`)
+		}
+
+		r.events.Eventf(instance, `Normal`, `ResourceUpdated`, "Attached  AWS InternetGateway to VPC (%s)", vpc.ObjectMeta.Annotations[`vpcid`])
+
+		// set the gateway as attached to a vpc
+		internetGatewayAttached := fmt.Sprint(*createAttachmentOutput)
+
+		//testing only
+		print(internetGatewayAttached)
+
+		//append finalizer now that everything is done
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `internetgateways.ecc.aws.gotopple.com`)
+
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
@@ -149,7 +186,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupInternetGatewayId`: internetGatewayId},
+					map[string]string{`cleanupinternetGatewayId`: internetGatewayId},
 					`Warning`,
 					`DeleteFailure`,
 					"Unable to delete the InternetGateway: %s", ierr.Error())
@@ -202,24 +239,6 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 			}
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
-		// this is where the attachment is made.
-		attachCreateOutput, err := svc.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
-			InternetGatewayId: aws.String(instance.ObjectMeta.Annotations[`internetGatewayId`]),
-			VpcId:             aws.String(vpc.ObjectMeta.Annotations[`vpcid`]),
-		})
-
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		if attachCreateOutput == nil {
-			return reconcile.Result{}, fmt.Errorf(`AttachInternetGatewayOutput was nil`)
-		}
-
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS AttachInternetGateway to", internetGatewayId)
-		//Now everything is done, add the finalizer.
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `internetgateways.ecc.aws.gotopple.com`)
-
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
@@ -227,30 +246,6 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 				instance.ObjectMeta.Finalizers = append(
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)
-			}
-		}
-
-		// Detach the gateway before deletion:
-
-		_, err := svc.DetachInternetGateway(&ec2.DetachInternetGatewayInput{
-			InternetGatewayId: aws.String(instance.ObjectMeta.Annotations[`internetGatewayId`]),
-			VpcId:             aws.String(vpc.ObjectMeta.Annotations[`vpcid`]),
-		})
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the InternetGatewayAttachment: %s", err.Error())
-			// need to fix this to work with the deletion of the attachment
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case `InvalidInternetGatewayID.NotFound`: // need to change this
-					// we want to keep going
-					r.events.Eventf(instance, `Success`, `AlreadyDeleted`, "The InternetGateway: %s was already deleted", err.Error())
-				default:
-					return reconcile.Result{}, err
-				}
-			} else {
-				return reconcile.Result{}, err
 			}
 		}
 
@@ -267,7 +262,8 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 				switch aerr.Code() {
 				case `InvalidInternetGatewayID.NotFound`:
 					// we want to keep going
-					r.events.Eventf(instance, `Success`, `AlreadyDeleted`, "The InternetGateway: %s was already deleted", err.Error())
+					// event type was changed from 'Success' to 'Normal', because i got an error that 'Success' wasn't supported
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The InternetGateway: %s was already deleted", err.Error())
 				default:
 					return reconcile.Result{}, err
 				}

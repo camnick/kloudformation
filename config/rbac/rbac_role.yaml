@@ -7,7 +7,7 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
-  - internetGateways
+  - internetgateways
   verbs:
   - get
   - list
