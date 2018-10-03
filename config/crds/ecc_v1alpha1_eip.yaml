@@ -21,6 +21,24 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            tags:
+              items:
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                required:
+                - key
+                - value
+                type: object
+              type: array
+            vpcName:
+              type: string
+          required:
+          - vpcName
+          - tags
           type: object
         status:
           type: object

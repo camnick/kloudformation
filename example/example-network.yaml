@@ -59,7 +59,7 @@ spec:
     - key: sample-key
       value: sample-value
     - key: Name
-      value: FUCKBALLS
+      value: SampleRouteTable
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: Route
@@ -81,5 +81,18 @@ metadata:
 spec:
   tags:
     - key: Name
-      value: FACK
+      value: SampleInternetGateway
   vpcName: example-network
+---
+#apiVersion: ecc.aws.gotopple.com/v1alpha1
+#kind: EIP
+#metadata:
+#  labels:
+#    controller-tools.k8s.io: "1.0"
+#  name: eip-sample
+#spec:
+#  vpcName: example-network
+#  tags:
+#    - key: Name
+#      value: BrandNewIP
+#

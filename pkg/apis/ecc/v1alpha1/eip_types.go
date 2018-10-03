@@ -27,6 +27,8 @@ import (
 type EIPSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	VpcName string        `json:"vpcName"`
+	Tags    []ResourceTag `json:"tags"`
 }
 
 // EIPStatus defines the observed state of EIP

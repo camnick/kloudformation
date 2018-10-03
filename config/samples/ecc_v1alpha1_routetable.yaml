@@ -10,4 +10,4 @@ spec:
     - key: sample-key
       value: sample-value
     - key: Name
-      value: FUCKBALLS
+      value: SampleRouteTable

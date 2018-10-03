@@ -7,5 +7,5 @@ metadata:
 spec:
   tags:
     - key: Name
-      value: FACK
+      value: SampleInternetGateway
   vpcName: example-network
