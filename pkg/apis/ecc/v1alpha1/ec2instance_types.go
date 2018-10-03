@@ -27,6 +27,37 @@ import (
 type EC2InstanceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	//AdditionalInfo 										string 																	`json:"additionalInfo"`
+	//BlockDeviceMappings 							[]BlocklDeviceMapping 									`json:"blockDeviceMapping"`
+	//ClientToken 											string 																	`json:"clientToken"`
+	//CpuOptions 												struct 																	`json:"cpuOptions"`
+	//CreditSpecification 							struct 																	`json:"creditSpecification"`
+	//DisableApiTermination 						bool 																		`json:"disableApiTermination"`
+	//DryRun 														bool 																		`json:"dryRun"`
+	///EbsOptimized 											bool 																		`json:"ebsOptimized"`
+	//ElasticGpuSpecification 					[]ElasticGpuSpecification 							`json:"elasticGpuSpecification"`
+	//IamInstanceProfile 								struct 																	`json:"iamInstanceProfile"`
+	ImageId 													string 																	`json:"imageId"`
+	//InstanceInitatedShutdownBehavior 	string 																	`json:"instancInitiatedShutdownBehavior"`
+	//InstanceMarketOptions 						struct 																	`json:"instanceMarketOptions"`
+	InstanceType 											string 																	`json:"instanceType"`
+	//Ipv6AddressCount 									int64 																	`json:"ipv6AddressCount"`
+	//Ipv6Addresses 										[]InstanceIpv6Address 									`json"ipv6Address"`
+	//KernalId 													string 																	`json:"kernalId"`
+	//KeyName 													string 																	`json:"keyName"`
+	//LaunchTemplate 										struct 																	`json:"launchTemplate"`
+	MaxCount 													int64 																	`json:"maxCount"`
+	MinCount 													int64 																	`json:"minCount"`
+	//Monitoring												struct																	`json:"monitoring"`
+	//NetworkInterfaces									[]InstanceNetworkInterfaceSpecification	`json:"networkInterfaces"`
+	//Placement													struct																	`json:"placement"`
+	//PrivateIpAddress									string																	`json:"privateIpAddress"`
+	//RamDiskId													string																	`json:"ramDiskId"`
+	//SecurityGroupIds									[]SecurityGroupId												`json:"securityGroupId"` // I don't think this is right
+	//SecurityGroups										[]SecurityGroup													`json:"securityGroup"`
+	SubnetId													string																	`json:"subnetId"`
+	TagSpecifications									[]TagSpecification											`json:"tagSpecification"`
+	//UserData													string																	`json:"userData"`
 }
 
 // EC2InstanceStatus defines the observed state of EC2Instance
