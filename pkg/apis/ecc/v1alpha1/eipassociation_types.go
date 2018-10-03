@@ -27,6 +27,12 @@ import (
 type EIPAssociationSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	AllocationName string `json:"allocationName"` //pull Allocated EIP name, read annotations to get AllocationId
+	InstanceName   string `json:"instanceName"`   // eull InstanceName, and get InstanceId from annotations
+	//AllowReassociation bool `json:"allowReassociation"`
+	//NetworkInterfaceId string `json:"networkInterfaceId"`
+	//PrivateIpAddress string `json:"privateIpAddress"`
+	//PublicIp string `json:"publicIp"`
 }
 
 // EIPAssociationStatus defines the observed state of EIPAssociation
