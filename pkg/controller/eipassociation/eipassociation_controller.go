@@ -98,13 +98,13 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 	}
 
 	eip := &eccv1alpha1.EIP{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, eip)
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.AllocationName, Namespace: instance.Namespace}, eip)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+	} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
 		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 	}
 
@@ -116,19 +116,19 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EIP Association in %s", *r.sess.Config.Region)
 		associateOutput, err := svc.AssociateAddress(&ec2.AssociateAddressInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
-			InstanceId:   aws.String("i-07028223502b4ddcc"),
+			InstanceId:   aws.String("i-0475b02a820a59e4f"),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		if createOutput == nil {
+		if associateOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`associateOutput was nil`)
 		}
 
 		eipAssociationId = *associateOutput.AssociationId
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EIP Associationt (%s)", eipAssociationId)
-		instance.ObjectMeta.Annotations[`eipAssociationId`] = eipAssociation
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EIP Association (%s)", eipAssociationId)
+		instance.ObjectMeta.Annotations[`eipAssociationId`] = eipAssociationId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `eipassociations.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
@@ -145,7 +145,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 				`ResourceUpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
-			_, ierr := svc.DisassociateAddress(&ec2.DisassociateAddressInput{
+			disassociateOutput, ierr := svc.DisassociateAddress(&ec2.DisassociateAddressInput{
 				AssociationId: aws.String(eipAssociationId),
 			})
 			if ierr != nil {
@@ -168,7 +168,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 					fmt.Println(ierr.Error())
 				}
 
-			} else if deleteOutput == nil {
+			} else if disassociateOutput == nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
