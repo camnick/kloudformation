@@ -21,6 +21,38 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            imageId:
+              type: string
+            instanceType:
+              type: string
+            maxCount:
+              format: int64
+              type: integer
+            minCount:
+              format: int64
+              type: integer
+            subnetId:
+              type: string
+            tagSpecification:
+              items:
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                required:
+                - key
+                - value
+                type: object
+              type: array
+          required:
+          - imageId
+          - instanceType
+          - maxCount
+          - minCount
+          - subnetId
+          - tagSpecification
           type: object
         status:
           type: object

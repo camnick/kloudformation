@@ -34,20 +34,20 @@ type EC2InstanceSpec struct {
 	//CreditSpecification 							struct 																	`json:"creditSpecification"`
 	//DisableApiTermination 						bool 																		`json:"disableApiTermination"`
 	//DryRun 														bool 																		`json:"dryRun"`
-	///EbsOptimized 											bool 																		`json:"ebsOptimized"`
+	//EbsOptimized 											bool 																		`json:"ebsOptimized"`
 	//ElasticGpuSpecification 					[]ElasticGpuSpecification 							`json:"elasticGpuSpecification"`
 	//IamInstanceProfile 								struct 																	`json:"iamInstanceProfile"`
-	ImageId 													string 																	`json:"imageId"`
+	ImageId string `json:"imageId"`
 	//InstanceInitatedShutdownBehavior 	string 																	`json:"instancInitiatedShutdownBehavior"`
 	//InstanceMarketOptions 						struct 																	`json:"instanceMarketOptions"`
-	InstanceType 											string 																	`json:"instanceType"`
+	InstanceType string `json:"instanceType"`
 	//Ipv6AddressCount 									int64 																	`json:"ipv6AddressCount"`
 	//Ipv6Addresses 										[]InstanceIpv6Address 									`json"ipv6Address"`
 	//KernalId 													string 																	`json:"kernalId"`
 	//KeyName 													string 																	`json:"keyName"`
 	//LaunchTemplate 										struct 																	`json:"launchTemplate"`
-	MaxCount 													int64 																	`json:"maxCount"`
-	MinCount 													int64 																	`json:"minCount"`
+	MaxCount int64 `json:"maxCount"`
+	MinCount int64 `json:"minCount"`
 	//Monitoring												struct																	`json:"monitoring"`
 	//NetworkInterfaces									[]InstanceNetworkInterfaceSpecification	`json:"networkInterfaces"`
 	//Placement													struct																	`json:"placement"`
@@ -55,8 +55,8 @@ type EC2InstanceSpec struct {
 	//RamDiskId													string																	`json:"ramDiskId"`
 	//SecurityGroupIds									[]SecurityGroupId												`json:"securityGroupId"` // I don't think this is right
 	//SecurityGroups										[]SecurityGroup													`json:"securityGroup"`
-	SubnetId													string																	`json:"subnetId"`
-	TagSpecifications									[]TagSpecification											`json:"tagSpecification"`
+	SubnetName string        `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
+	Tags     []ResourceTag `json:"tags"`
 	//UserData													string																	`json:"userData"`
 }
 
