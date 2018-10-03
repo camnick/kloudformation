@@ -230,7 +230,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 				switch aerr.Code() {
 				case `InvalidAllocationId.NotFound`:
 					// we want to keep going
-					r.events.Eventf(instance, `Success`, `AlreadyDeleted`, "The EIP: %s was already deleted", err.Error())
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The EIP: %s was already deleted", err.Error())
 				default:
 					return reconcile.Result{}, err
 				}

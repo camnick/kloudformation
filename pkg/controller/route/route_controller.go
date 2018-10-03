@@ -103,7 +103,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	//print(instance.Spec.RouteTableName, " Is the name of the route table in question. ")
 	if err != nil {
 		if errors.IsNotFound(err) {
-			print(" Something went wrong with pulling the relevant RouteTable info. It looks to not exist.")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, nil
 		}
@@ -120,7 +119,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		//print(" Something went wrong with pulling the relevant InternetGateway info.")
 		if errors.IsNotFound(err) {
-			print("the gateway aint ready.")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, nil
 		}
@@ -182,7 +180,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
 			})
 			if ierr != nil {
-				print("the attempt returned a non nil error")
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
@@ -203,7 +200,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				}
 
 			} else if deleteOutput == nil {
-				print("delete output was nil")
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
@@ -252,15 +248,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 
 		// must delete
-		deleteOutput, err := svc.DeleteRoute(&ec2.DeleteRouteInput{
+		_, err := svc.DeleteRoute(&ec2.DeleteRouteInput{
 			RouteTableId:         aws.String(instance.ObjectMeta.Annotations[`associatedRouteTableId`]),
 			DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
 		})
-		print("these were the values passed to the deletion func ", instance.ObjectMeta.Annotations[`associatedRouteTableId`], " and ", instance.Spec.DestinationCidrBlock)
-		print("delete output here>", fmt.Sprint(deleteOutput), "< and here")
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Route: %s", err.Error())
-			print("deletion failed bitch")
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
@@ -275,14 +268,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				return reconcile.Result{}, err
 			}
 		}
-		print("going to attempt to remove the finalizer")
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		print("if you see this then the route and finalizer are both GONE BITCH")
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Route and removed finalizers")
 	}
 

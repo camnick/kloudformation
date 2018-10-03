@@ -232,7 +232,7 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 				switch aerr.Code() {
 				case `InvalidSubnetID.NotFound`:
 					// we want to keep going
-					r.events.Eventf(instance, `Success`, `AlreadyDeleted`, "The Subnet: %s was already deleted", err.Error())
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The Subnet: %s was already deleted", err.Error())
 				default:
 					return reconcile.Result{}, err
 				}

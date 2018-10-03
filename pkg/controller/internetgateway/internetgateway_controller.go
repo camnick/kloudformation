@@ -118,9 +118,6 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS InternetGateway in %s", *r.sess.Config.Region)
 		createGatewayOutput, err := svc.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
 
-		//testing only
-		print(createGatewayOutput, " is the createGatewayOutput")
-
 		//catch the errors fromt the create attempt
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
@@ -134,9 +131,6 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 		internetGatewayId = *createGatewayOutput.InternetGateway.InternetGatewayId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS InternetGateway (%s)", internetGatewayId)
 		instance.ObjectMeta.Annotations[`internetGatewayId`] = internetGatewayId
-
-		// testing only- confirm the id is saved
-		print(internetGatewayId, " and ", instance.ObjectMeta.Annotations[`internetGatewayId`], " is the internetGatewayId ")
 
 		// now logging the intent to attach, then will try to attach
 		r.events.Eventf(instance, `Normal`, `ResourceUpdateAttempt`, "Attaching AWS InternetGateway to VPC (%s)", vpc.ObjectMeta.Annotations[`vpcid`])
@@ -158,10 +152,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 
 		// set the gateway as attached to a vpc
 		internetGatewayAttached := fmt.Sprint(*createAttachmentOutput)
-
-		//testing only
-		print(internetGatewayAttached)
-
+		instance.ObjectMeta.Annotations[`internetGatewayAttached`] = internetGatewayAttached
 		//append finalizer now that everything is done
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `internetgateways.ecc.aws.gotopple.com`)
 
