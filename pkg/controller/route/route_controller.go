@@ -108,7 +108,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 		return reconcile.Result{}, err
 	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
@@ -124,7 +123,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 		return reconcile.Result{}, err
 	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 	}
 
@@ -260,7 +258,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				switch aerr.Code() {
 				case `InvalidRoute.NotFound`:
 					// we want to keep going
-					r.events.Eventf(instance, `Success`, `AlreadyDeleted`, "The Route: %s was already deleted", err.Error())
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The Route: %s was already deleted", err.Error())
 				default:
 					return reconcile.Result{}, err
 				}

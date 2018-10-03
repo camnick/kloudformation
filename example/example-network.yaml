@@ -83,16 +83,15 @@ spec:
   destinationCidrBlock: "192.168.1.0/24"
   routeTableName: routetable-sample
   gatewayName: internetgateway-sample
-#---
-#apiVersion: ecc.aws.gotopple.com/v1alpha1
-#kind: EIP
-#metadata:
-#  labels:
-#    controller-tools.k8s.io: "1.0"
-#  name: eip-sample
-#spec:
-#  vpcName: example-network
-#  tags:
-#    - key: Name
-#      value: BrandNewIP
-#
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EIP
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: eip-sample
+spec:
+  vpcName: example-network
+  tags:
+    - key: Name
+      value: BrandNewIP
