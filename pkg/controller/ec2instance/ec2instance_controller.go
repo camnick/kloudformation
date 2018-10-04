@@ -130,9 +130,10 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 		if reservation == nil {
 			return reconcile.Result{}, fmt.Errorf(`Reservation was nil`)
 		}
-    if len(reservation.Instances[0].InstanceId) < 1 {
+		/*
+		if len(reservation.Instances[0].InstanceId) < 1 {
 			return reconcile.Result{}, fmt.Errorf(`Reservation was zero length.`)
-		}
+		}*/
 		ec2InstanceId = *reservation.Instances[0].InstanceId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2Instance (%s)", ec2InstanceId)
 		instance.ObjectMeta.Annotations[`ec2InstanceId`] = ec2InstanceId
