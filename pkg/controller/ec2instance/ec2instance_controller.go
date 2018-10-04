@@ -69,7 +69,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &EC2Instance{}
+var _ reconcile.Reconciler = &ReconcileEC2Instance{}
 
 // ReconcileEC2Instance reconciles an EC2Instance object
 type ReconcileEC2Instance struct {
@@ -128,10 +128,12 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 		if reservation == nil {
-			return reconcile.Result{}, fmt.Errorf(`ReservationOutput was nil`)
+			return reconcile.Result{}, fmt.Errorf(`Reservation was nil`)
 		}
-
-		ec2InstanceId = *reservation.Instances.InstanceId
+    if len(reservation.Instances[0].InstanceId) < 1 {
+			return reconcile.Result{}, fmt.Errorf(`Reservation was zero length.`)
+		}
+		ec2InstanceId = *reservation.Instances[0].InstanceId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2Instance (%s)", ec2InstanceId)
 		instance.ObjectMeta.Annotations[`ec2InstanceId`] = ec2InstanceId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2instances.ecc.aws.gotopple.com`)
