@@ -48,6 +48,20 @@ spec:
      value: public-c
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2Instance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: sample-ec2-instance
+spec:
+  imageId: ami-6cd6f714 #Amazon Linux
+  instanceType: t2.micro
+  subnetName: example-network-public-a
+  tags:
+    - key: Name
+      value: "Test Instance"
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: RouteTable
 metadata:
   labels:
@@ -95,20 +109,6 @@ spec:
   tags:
     - key: Name
       value: BrandNewIP
----
-apiVersion: ecc.aws.gotopple.com/v1alpha1
-kind: EC2Instance
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: sample-ec2-instance
-spec:
-  imageId: ami-6cd6f714 #Amazon Linux
-  instanceType: t2.micro
-  subnetName: example-network-public-a
-  tags:
-    - key: Name
-      value: "Test Instance"
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: EIPAssociation

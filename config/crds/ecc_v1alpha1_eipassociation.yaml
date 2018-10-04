@@ -24,11 +24,8 @@ spec:
           properties:
             allocationName:
               type: string
-            instanceName:
-              type: string
           required:
           - allocationName
-          - instanceName
           type: object
         status:
           type: object
