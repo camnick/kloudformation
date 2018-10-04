@@ -3,7 +3,7 @@ kind: EC2Instance
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: ec2instance-sample
+  name: sample-ec2-instance
 spec:
   imageId: ami-6cd6f714 #Amazon Linux
   instanceType: t2.micro

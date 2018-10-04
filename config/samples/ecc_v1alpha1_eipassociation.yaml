@@ -6,4 +6,4 @@ metadata:
   name: eipassociation-sample
 spec:
   allocationName: eip-sample
-  instanceName: sample-ec2-instance
+  ec2InstanceName: sample-ec2-instance

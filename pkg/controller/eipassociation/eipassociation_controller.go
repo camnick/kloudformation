@@ -108,6 +108,17 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 	}
 
+	ec2Instance := &eccv1alpha1.EC2Instance{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
+		return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+	}
+
 	svc := ec2.New(r.sess)
 	// get the EIPAssociationId out of the annotations
 	// if absent then create
@@ -116,7 +127,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EIP Association in %s", *r.sess.Config.Region)
 		associateOutput, err := svc.AssociateAddress(&ec2.AssociateAddressInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
-			InstanceId:   aws.String("i-0475b02a820a59e4f"),
+			InstanceId:   aws.String(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
