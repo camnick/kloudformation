@@ -7,8 +7,6 @@ metadata:
 spec:
   imageId: ami-6cd6f714 #Amazon Linux
   instanceType: t2.micro
-  maxCount: 1
-  minCount: 1
   subnetName: example-network-public-a
   tags:
     - key: Name

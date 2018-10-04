@@ -46,8 +46,8 @@ type EC2InstanceSpec struct {
 	//KernalId 													string 																	`json:"kernalId"`
 	//KeyName 													string 																	`json:"keyName"`
 	//LaunchTemplate 										struct 																	`json:"launchTemplate"`
-	MaxCount int64 `json:"maxCount"`
-	MinCount int64 `json:"minCount"`
+	//MaxCount int64 `json:"maxCount"`
+	//MinCount int64 `json:"minCount"`
 	//Monitoring												struct																	`json:"monitoring"`
 	//NetworkInterfaces									[]InstanceNetworkInterfaceSpecification	`json:"networkInterfaces"`
 	//Placement													struct																	`json:"placement"`
@@ -56,7 +56,7 @@ type EC2InstanceSpec struct {
 	//SecurityGroupIds									[]SecurityGroupId												`json:"securityGroupId"` // I don't think this is right
 	//SecurityGroups										[]SecurityGroup													`json:"securityGroup"`
 	SubnetName string        `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
-	Tags     []ResourceTag `json:"tags"`
+	Tags       []ResourceTag `json:"tags"`
 	//UserData													string																	`json:"userData"`
 }
 

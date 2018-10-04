@@ -72,7 +72,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 var _ reconcile.Reconciler = &EC2Instance{}
 
 // ReconcileEC2Instance reconciles an EC2Instance object
-type ReconcileSubnet struct {
+type ReconcileEC2Instance struct {
 	client.Client
 	scheme *runtime.Scheme
 	sess   *awssession.Session
@@ -96,7 +96,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
+	// check for the subnet that the instance will be launched into and grab the subnetid
 	subnet := &eccv1alpha1.Subnet{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 	if err != nil {
@@ -114,34 +114,35 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 	ec2InstanceId, ok := instance.ObjectMeta.Annotations[`ec2InstanceId`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EC2Instance in %s", *r.sess.Config.Region)
-		reservation, err := svc.RunInstancest(&ec2.RunInstancesInput{
-			ImageId: 						aws.String(instance.Spec.ImageId),
-			InstanceType: 			aws.String(instance.Spec.InstanceType),
-			MaxCount:						aws.String(instance.Spec.MaxCount),
-			MinCount:						aws.String(instance.Spec.MinCount),
-			SubnetId:						aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
-			TagSpecifications:	aws.List(instance.Spec.Tags),
+		reservation, err := svc.RunInstances(&ec2.RunInstancesInput{
+			ImageId:      aws.String(instance.Spec.ImageId),
+			InstanceType: aws.String(instance.Spec.InstanceType),
+			MaxCount:     aws.Int64(1), //this resource is for a single instance
+			MinCount:     aws.Int64(1), //this resource is for a single instance
+			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
+			// need to fix tags
+			//TagSpecifications: []*ec2,
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		if createOutput == nil {
+		if reservation == nil {
 			return reconcile.Result{}, fmt.Errorf(`ReservationOutput was nil`)
 		}
-/// resume here
-		ec2InstanceId = *reservation.Instances.ReservationId
+
+		ec2InstanceId = *reservation.Instances.InstanceId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2Instance (%s)", ec2InstanceId)
-		instance.ObjectMeta.Annotations[`subnetid`] = subnetid
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `subnets.ecc.aws.gotopple.com`)
+		instance.ObjectMeta.Annotations[`ec2InstanceId`] = ec2InstanceId
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2instances.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
-			// the Subnet resource will not be able to track the created Subnet and
+			// the EC2Instance resource will not be able to track the created EC2Instance and
 			// no finalizer will have been appended.
 			//
-			// This routine should attempt to delete the AWS Subnet before
+			// This routine should attempt to delete the AWS EC2Instance before
 			// returning the error and retrying.
 
 			r.events.Eventf(instance,
@@ -149,17 +150,18 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 				`ResourceUpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
-			deleteOutput, ierr := svc.DeleteSubnet(&ec2.DeleteSubnetInput{
-				SubnetId: aws.String(subnetid),
-			})
+			terminateOutput, ierr := svc.TerminateInstances(&ec2.TerminateInstancesInput{
+				InstanceIds: []*string{
+					aws.String(instance.ObjectMeta.Annotations[`ec2InstanceId`]),
+				}})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupSubnetId`: subnetid},
+					map[string]string{`cleanupEC2InstanceId`: ec2InstanceId},
 					`Warning`,
 					`DeleteFailure`,
-					"Unable to delete the Subnet: %s", ierr.Error())
+					"Unable to delete the EC2Instance: %s", ierr.Error())
 
 				if aerr, ok := ierr.(awserr.Error); ok {
 					switch aerr.Code() {
@@ -172,15 +174,15 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 					fmt.Println(ierr.Error())
 				}
 
-			} else if deleteOutput == nil {
+			} else if terminateOutput == nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupSubnetId`: subnetid},
+					map[string]string{`cleanupEC2InstanceId`: ec2InstanceId},
 					`Warning`,
 					`DeleteAmbiguity`,
-					"Attempt to delete the Subnet recieved a nil response")
-				return reconcile.Result{}, fmt.Errorf(`DeleteSubnetOutput was nil`)
+					"Attempt to delete the EC2Instance recieved a nil response")
+				return reconcile.Result{}, fmt.Errorf(`TerminateOutput was nil`)
 			}
 			return reconcile.Result{}, err
 		}
@@ -188,7 +190,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
-			// Tag the new Subnet
+			// Tag the new EC2Instance
 			ts := []*ec2.Tag{}
 			for _, t := range instance.Spec.Tags {
 				ts = append(ts, &ec2.Tag{
@@ -197,7 +199,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 				})
 			}
 			tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
-				Resources: []*string{aws.String(subnetid)},
+				Resources: []*string{aws.String(ec2InstanceId)},
 				Tags:      ts,
 			})
 			if err != nil {
@@ -212,7 +214,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `subnets.ecc.aws.gotopple.com` {
+			if f == `ec2instances.ecc.aws.gotopple.com` {
 				instance.ObjectMeta.Finalizers = append(
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)
@@ -220,19 +222,21 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 		}
 
 		// must delete
-		_, err = svc.DeleteSubnet(&ec2.DeleteSubnetInput{
-			SubnetId: aws.String(subnetid),
+		_, err = svc.TerminateInstances(&ec2.TerminateInstancesInput{
+			InstanceIds: []*string{
+				aws.String(instance.ObjectMeta.Annotations[`ec2InstanceId`]),
+			},
 		})
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Subnet: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2Instance: %s", err.Error())
 
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidSubnetID.NotFound`:
+				case `InvalidInstanceID.NotFound`: /// this might not be right
 					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The Subnet: %s was already deleted", err.Error())
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The EC2Instance: %s was already deleted", err.Error())
 				default:
 					return reconcile.Result{}, err
 				}
@@ -247,7 +251,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Subnet and removed finalizers")
+		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2Instance and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil
