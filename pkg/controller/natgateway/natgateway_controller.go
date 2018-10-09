@@ -104,7 +104,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
 		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 	}
 
@@ -115,7 +115,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+	} else if len(subnet.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
 		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 	}
 
@@ -127,7 +127,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS NATGateway in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateNatGateway(&ec2.CreateNatGatewayInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
-			SubnetId: 		aws.String(subnet.ObjectMeta.Annotations[`SubnetId`]),
+			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`SubnetId`]),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
@@ -137,7 +137,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, fmt.Errorf(`CreateNatGatewayOutput was nil`)
 		}
 
-		natGatewayId = *createOutput.NATGateway.NATGatewayId
+		natGatewayId = *createOutput.NatGateway.NatGatewayId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS NATGateway (%s)", natGatewayId)
 		instance.ObjectMeta.Annotations[`natGatewayId`] = natGatewayId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `natgateways.ecc.aws.gotopple.com`)
@@ -157,7 +157,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteNatGateway(&ec2.DeleteNatGatewayInput{
-				NATGatewayId: aws.String(natGatewayId),
+				NatGatewayId: aws.String(natGatewayId),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
@@ -192,30 +192,31 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
-
-		// Make sure that there are tags to add before attempting to add them.
-		if len(instance.Spec.Tags) >= 1 {
-			// Tag the new NATGateway
-			ts := []*ec2.Tag{}
-			for _, t := range instance.Spec.Tags {
-				ts = append(ts, &ec2.Tag{
-					Key:   aws.String(t.Key),
-					Value: aws.String(t.Value),
+		/*
+			// Make sure that there are tags to add before attempting to add them.
+			if len(instance.Spec.Tags) >= 1 {
+				// Tag the new NATGateway
+				ts := []*ec2.Tag{}
+				for _, t := range instance.Spec.Tags {
+					ts = append(ts, &ec2.Tag{
+						Key:   aws.String(t.Key),
+						Value: aws.String(t.Value),
+					})
+				}
+				tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
+					Resources: []*string{aws.String(natGatewayId)},
+					Tags:      ts,
 				})
+				if err != nil {
+					r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+					return reconcile.Result{}, err
+				}
+				if tagOutput == nil {
+					return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
+				}
+				r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 			}
-			tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
-				Resources: []*string{aws.String(natGatewayId)},
-				Tags:      ts,
-			})
-			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
-				return reconcile.Result{}, err
-			}
-			if tagOutput == nil {
-				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
-			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
-		}
+		*/
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
@@ -228,7 +229,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 
 		// must delete
 		_, err = svc.DeleteNatGateway(&ec2.DeleteNatGatewayInput{
-			NATGatewayId: aws.String(natGatewayId),
+			NatGatewayId: aws.String(natGatewayId),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the NATGateway: %s", err.Error())
