@@ -200,7 +200,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
-		/*
+
 			// Make sure that there are tags to add before attempting to add them.
 			if len(instance.Spec.Tags) >= 1 {
 				// Tag the new NATGateway
@@ -224,7 +224,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 				}
 				r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 			}
-		*/
+		
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {

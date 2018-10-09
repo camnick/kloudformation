@@ -29,6 +29,7 @@ type NATGatewaySpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	SubnetName        string `json:"subnetName"`
 	EIPAllocationName string `json:"eipAllocationName"`
+	Tags							[]ResourceTag	`json:"tags"`
 }
 
 // NATGatewayStatus defines the observed state of NATGateway
