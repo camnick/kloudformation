@@ -26,9 +26,22 @@ spec:
               type: string
             subnetName:
               type: string
+            tags:
+              items:
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                required:
+                - key
+                - value
+                type: object
+              type: array
           required:
           - subnetName
           - eipAllocationName
+          - tags
           type: object
         status:
           type: object

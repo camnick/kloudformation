@@ -27,9 +27,9 @@ import (
 type NATGatewaySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	SubnetName        string `json:"subnetName"`
-	EIPAllocationName string `json:"eipAllocationName"`
-	Tags							[]ResourceTag	`json:"tags"`
+	SubnetName        string        `json:"subnetName"`
+	EIPAllocationName string        `json:"eipAllocationName"`
+	Tags              []ResourceTag `json:"tags"`
 }
 
 // NATGatewayStatus defines the observed state of NATGateway
