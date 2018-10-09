@@ -101,10 +101,12 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			print("subnet not found")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+		print("subnet not ready")
 		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 	}
 
@@ -112,10 +114,12 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EIPAllocationName, Namespace: instance.Namespace}, eip)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			print("eip not found")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
-	} else if len(subnet.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+	} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+		print("eip not ready")
 		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 	}
 
@@ -125,19 +129,23 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 	natGatewayId, ok := instance.ObjectMeta.Annotations[`natGatewayId`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS NATGateway in %s", *r.sess.Config.Region)
+		print("going to try to make the nat gateway")
 		createOutput, err := svc.CreateNatGateway(&ec2.CreateNatGatewayInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
-			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`SubnetId`]),
+			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
+			print("create failed")
 			return reconcile.Result{}, err
 		}
 		if createOutput == nil {
+			print("the create output was nil")
 			return reconcile.Result{}, fmt.Errorf(`CreateNatGatewayOutput was nil`)
 		}
 
 		natGatewayId = *createOutput.NatGateway.NatGatewayId
+		print(natGatewayId, "is the nat gateway id")
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS NATGateway (%s)", natGatewayId)
 		instance.ObjectMeta.Annotations[`natGatewayId`] = natGatewayId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `natgateways.ecc.aws.gotopple.com`)

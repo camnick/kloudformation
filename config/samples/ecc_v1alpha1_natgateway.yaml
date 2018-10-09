@@ -5,5 +5,5 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: natgateway-sample
 spec:
-  SubnetName: example-network-public-a
-  AllocationName: eip-sample2
+  subnetName: example-network-public-a
+  eipAllocationName: eip-sample
