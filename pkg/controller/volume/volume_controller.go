@@ -113,7 +113,6 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 	// if absent then create
 	volumeId, ok := instance.ObjectMeta.Annotations[`volumeId`]
 	if !ok {
-		print("attempt to create volume")
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Volume in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateVolume(&ec2.CreateVolumeInput{
 			AvailabilityZone: aws.String(instance.Spec.AvailabilityZone),
@@ -121,22 +120,15 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 			VolumeType:       aws.String(instance.Spec.VolumeType),
 		})
 
-		print(instance.Spec.AvailabilityZone)
-		print(instance.Spec.Size)
-		print(instance.Spec.VolumeType)
-		print(volumeId)
 		if err != nil {
-			print("create failed")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		if createOutput == nil {
-			print("create output was nil")
 			return reconcile.Result{}, fmt.Errorf(`CreateVolumeOutput was nil`)
 		}
 
 		volumeId = *createOutput.VolumeId
-		print(volumeId)
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Volume (%s)", volumeId)
 		instance.ObjectMeta.Annotations[`volumeId`] = volumeId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `volumes.ecc.aws.gotopple.com`)
