@@ -101,10 +101,12 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			print("can't find vpc")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+		print("vpc not ready")
 		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 	}
 
@@ -112,10 +114,12 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.InternetGatewayName, Namespace: instance.Namespace}, internetGateway)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			print("cant find gateway")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+		print("gateway not ready")
 		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 	}
 
@@ -131,9 +135,11 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
+			print("initial creation failed")
 			return reconcile.Result{}, err
 		}
 		if createOutput == nil {
+			print("initial creation output was nil")
 			return reconcile.Result{}, fmt.Errorf(`internetGatewayAttached was nil`)
 		}
 
