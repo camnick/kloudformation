@@ -136,7 +136,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 	}
 
-	internetGateway := &eccv1alpha1.InternetGateway{}
+	//internetGateway := &eccv1alpha1.InternetGateway{}
 
 	svc := ec2.New(r.sess)
 	// get the NATGatewayId out of the annotations
