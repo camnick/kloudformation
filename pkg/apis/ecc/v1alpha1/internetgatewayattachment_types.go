@@ -27,8 +27,8 @@ import (
 type InternetGatewayAttachmentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	InternetGatewayName	string	`json:"internetGatewayName"`
-	VPCName							string	`json:"vpcName"`
+	InternetGatewayName string `json:"internetGatewayName"`
+	VPCName             string `json:"vpcName"`
 }
 
 // InternetGatewayAttachmentStatus defines the observed state of InternetGatewayAttachment
