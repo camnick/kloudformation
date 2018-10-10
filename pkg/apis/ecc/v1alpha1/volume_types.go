@@ -27,10 +27,10 @@ import (
 type VolumeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	AvailabilityZone	string					`json:"availabilityZone:"`
-	Size							int64						`json:"size"`
-	VolumeType:				string					`json:"volumeType"`
-	Tags							[]ResourceTag		`json:"tags"`
+	AvailabilityZone string        `json:"availabilityZone"`
+	Size             int64         `json:"size"`
+	VolumeType       string        `json:"volumeType"`
+	Tags             []ResourceTag `json:"tags"`
 }
 
 // VolumeStatus defines the observed state of Volume

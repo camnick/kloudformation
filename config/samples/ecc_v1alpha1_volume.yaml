@@ -5,5 +5,9 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: volume-sample
 spec:
-  # Add fields here
-  foo: bar
+  availabilityZone: us-west-2a
+  size: 8
+  volumeType: gp2
+  tags:
+    - key: Name
+      value: sample-volume

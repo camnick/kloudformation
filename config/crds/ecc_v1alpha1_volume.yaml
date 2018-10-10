@@ -21,6 +21,31 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            availabilityZone:
+              type: string
+            size:
+              format: int64
+              type: integer
+            tags:
+              items:
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                required:
+                - key
+                - value
+                type: object
+              type: array
+            volumeType:
+              type: string
+          required:
+          - availabilityZone
+          - size
+          - volumeType
+          - tags
           type: object
         status:
           type: object
