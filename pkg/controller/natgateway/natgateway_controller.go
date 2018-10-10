@@ -123,6 +123,21 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 	}
 
+	vpc := &eccv1alpha1.VPC{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: subnet.Spec.VPCName, Namespace: instance.Namespace}, vpc)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			print("vpc not found")
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+		print("vpc not ready")
+		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+	}
+
+	internetGateway := &eccv1alpha1.InternetGateway{}
+
 	svc := ec2.New(r.sess)
 	// get the NATGatewayId out of the annotations
 	// if absent then create
