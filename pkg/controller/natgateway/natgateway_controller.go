@@ -147,6 +147,16 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS NATGateway in %s", *r.sess.Config.Region)
 		print("going to try to make the nat gateway")
+
+		// first check that the VPC has an InternetGateway.
+
+		internetGatewayAttached, ok := vpc.ObjectMeta.Annotations[`attachedInternetGatewayId`]
+		if !ok {
+			print("   ***   Gateway not attached   ***   ", internetGatewayAttached)
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: VPC %s has no InternetGateway", vpc.ObjectMeta.Annotations[`vpcid`])
+			return reconcile.Result{}, fmt.Errorf(`VPC has no InternetGateway`)
+		}
+
 		createOutput, err := svc.CreateNatGateway(&ec2.CreateNatGatewayInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
 			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),

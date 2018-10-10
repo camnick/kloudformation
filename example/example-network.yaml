@@ -28,12 +28,24 @@ kind: EIP
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: eip-sample2
+  name: eip-sample-for-nat
 spec:
   vpcName: example-network
   tags:
     - key: Name
-      value: BrandNewIP2
+      value: BrandNewIPforNAT
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EIP
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: eip-sample-for-ec2
+spec:
+  vpcName: example-network
+  tags:
+    - key: Name
+      value: BrandNewIPforEC2
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: Subnet
@@ -129,7 +141,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: eipassociation-sample
 spec:
-  allocationName: eip-sample
+  allocationName: eip-sample-for-ec2
   instanceName: sample-ec2-instance
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
@@ -150,7 +162,7 @@ metadata:
   name: natgateway-sample
 spec:
   subnetName: example-network-public-a
-  eipAllocationName: eip-sample2
+  eipAllocationName: eip-sample-for-nat
   tags:
     - key: Name
       value: Amazing-NAT-Gateway

@@ -6,7 +6,7 @@ metadata:
   name: natgateway-sample
 spec:
   subnetName: example-network-public-a
-  eipAllocationName: eip-sample
+  eipAllocationName: eip-sample-for-nat
   tags:
     - key: Name
       value: Amazing-NAT-Gateway
