@@ -132,7 +132,6 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS InternetGateway (%s)", internetGatewayId)
 		instance.ObjectMeta.Annotations[`internetGatewayId`] = internetGatewayId
 
-
 		//append finalizer now that everything is done
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `internetgateways.ecc.aws.gotopple.com`)
 

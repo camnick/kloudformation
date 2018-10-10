@@ -133,6 +133,16 @@ spec:
   instanceName: sample-ec2-instance
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: InternetGatewayAttachment
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: internetgatewayattachment-sample
+spec:
+  vpcName: example-network
+  internetGatewayName: internetgateway-sample
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: NATGateway
 metadata:
   labels:
