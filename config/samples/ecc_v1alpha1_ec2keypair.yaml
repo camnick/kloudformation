@@ -5,5 +5,4 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: ec2keypair-sample
 spec:
-  # Add fields here
-  foo: bar
+  ec2KeyPairName: sample-keypair

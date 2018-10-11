@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The KloudFormation authors.
+Copyright 2018 Jeff Nickoloff (jeff@allingeek.com).
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,40 +18,38 @@ package ec2keypair
 
 import (
 	"context"
-	"log"
-	"reflect"
+	"fmt"
 
+	aws "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	awssession "github.com/aws/aws-sdk-go/aws/session"
+	ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	//"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
-
 // Add creates a new EC2KeyPair Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this ecc.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileEC2KeyPair{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	sess := awssession.Must(awssession.NewSessionWithOptions(awssession.Options{
+		SharedConfigState: awssession.SharedConfigEnable,
+	}))
+	r := mgr.GetRecorder(`ec2keypair-controller`)
+	return &ReconcileEC2KeyPair{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -68,16 +66,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by EC2KeyPair - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &eccv1alpha1.EC2KeyPair{},
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -87,14 +75,13 @@ var _ reconcile.Reconciler = &ReconcileEC2KeyPair{}
 type ReconcileEC2KeyPair struct {
 	client.Client
 	scheme *runtime.Scheme
+	sess   *awssession.Session
+	events record.EventRecorder
 }
 
 // Reconcile reads that state of the cluster for a EC2KeyPair object and makes changes based on the state read
 // and what is in the EC2KeyPair.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=ec2keypairs,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the EC2KeyPair instance
@@ -110,57 +97,146 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Create(context.TODO(), deploy)
+	svc := ec2.New(r.sess)
+	// get the EC2KeyPairId out of the annotations
+	// if absent then create
+	awsKeyName, ok := instance.ObjectMeta.Annotations[`awsKeyName`]
+	if !ok {
+		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EC2KeyPair in %s", *r.sess.Config.Region)
+		createOutput, err := svc.CreateKeyPair(&ec2.CreateKeyPairInput{
+			KeyName: aws.String(instance.Spec.EC2KeyPairName),
+		})
 		if err != nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
+		if createOutput == nil {
+			return reconcile.Result{}, fmt.Errorf(`CreateEC2KeyPairOutput was nil`)
+		}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Printf("Updating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Update(context.TODO(), found)
+		awsKeyName = *createOutput.KeyName
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
+		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
+		print(*createOutput.KeyFingerprint)
+		print(*createOutput.KeyMaterial)
+
+		err = r.Update(context.TODO(), instance)
 		if err != nil {
+			// If the call to update the resource annotations has failed then
+			// the EC2KeyPair resource will not be able to track the created EC2KeyPair and
+			// no finalizer will have been appended.
+			//
+			// This routine should attempt to delete the AWS EC2KeyPair before
+			// returning the error and retrying.
+
+			r.events.Eventf(instance,
+				`Warning`,
+				`ResourceUpdateFailure`,
+				"Failed to update the resource: %s", err.Error())
+
+			deleteOutput, ierr := svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
+				KeyName: aws.String(awsKeyName),
+			})
+			if ierr != nil {
+				// Send an appropriate event that has been annotated
+				// for async AWS resource GC.
+				r.events.AnnotatedEventf(instance,
+					map[string]string{`cleanupEC2KeyPairName`: awsKeyName},
+					`Warning`,
+					`DeleteFailure`,
+					"Unable to delete the EC2KeyPair: %s", ierr.Error())
+
+				if aerr, ok := ierr.(awserr.Error); ok {
+					switch aerr.Code() {
+					default:
+						fmt.Println(aerr.Error())
+					}
+				} else {
+					// Print the error, cast err to awserr.Error to get the Code and
+					// Message from an error.
+					fmt.Println(ierr.Error())
+				}
+
+			} else if deleteOutput == nil {
+				// Send an appropriate event that has been annotated
+				// for async AWS resource GC.
+				r.events.AnnotatedEventf(instance,
+					map[string]string{`cleanupEC2KeyPairName`: awsKeyName},
+					`Warning`,
+					`DeleteAmbiguity`,
+					"Attempt to delete the EC2KeyPair recieved a nil response")
+				return reconcile.Result{}, fmt.Errorf(`DeleteEC2KeyPairOutput was nil`)
+			}
 			return reconcile.Result{}, err
 		}
+		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		/*
+			// Make sure that there are tags to add before attempting to add them.
+			if len(instance.Spec.Tags) >= 1 {
+				// Tag the new EC2KeyPair
+				ts := []*ec2.Tag{}
+				for _, t := range instance.Spec.Tags {
+					ts = append(ts, &ec2.Tag{
+						Key:   aws.String(t.Key),
+						Value: aws.String(t.Value),
+					})
+				}
+				tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
+					Resources: []*string{aws.String(awsKeyName)},
+					Tags:      ts,
+				})
+				if err != nil {
+					r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+					return reconcile.Result{}, err
+				}
+				if tagOutput == nil {
+					return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
+				}
+				r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+			}
+		*/
+
+	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `ec2keypairs.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
+		}
+
+		// must delete
+		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
+			KeyName: aws.String(awsKeyName),
+		})
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2KeyPair: %s", err.Error())
+
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case `InvalidSubnetID.NotFound`:
+					// we want to keep going
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The EC2KeyPair: %s was already deleted", err.Error())
+				default:
+					return reconcile.Result{}, err
+				}
+			} else {
+				return reconcile.Result{}, err
+			}
+		}
+
+		// after a successful delete update the resource with the removed finalizer
+		err = r.Update(context.TODO(), instance)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2KeyPair and removed finalizers")
 	}
+
 	return reconcile.Result{}, nil
 }

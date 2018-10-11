@@ -191,3 +191,12 @@ spec:
   devicePath: /dev/xvdb
   ec2InstanceName: sample-ec2-instance
   volumeName: volume-sample
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2KeyPair
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ec2keypair-sample
+spec:
+  ec2KeyPairName: sample-keypair
