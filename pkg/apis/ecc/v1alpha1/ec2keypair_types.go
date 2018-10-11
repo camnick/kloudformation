@@ -27,6 +27,7 @@ import (
 type EC2KeyPairSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	EC2KeyPairName		string		`json:"ec2KeyPairName"`
 }
 
 // EC2KeyPairStatus defines the observed state of EC2KeyPair
