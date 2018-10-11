@@ -121,7 +121,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			MinCount:     aws.Int64(1), //this resource is for a single instance
 			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 			// need to fix tags
-			//TagSpecifications: []*ec2,
+			//TagSpecifications: []*ec2.TagSpecifications,
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
@@ -190,32 +190,31 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
-		/*
-			// Make sure that there are tags to add before attempting to add them.
-			if len(instance.Spec.Tags) >= 1 {
-				// Tag the new EC2Instance
-				ts := []*ec2.Tag{}
-				for _, t := range instance.Spec.Tags {
-					ts = append(ts, &ec2.Tag{
-						Key:   aws.String(t.Key),
-						Value: aws.String(t.Value),
-					})
-				}
-				tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
-					Resources: []*string{aws.String(ec2InstanceId)},
-					Tags:      ts,
-				})
-				if err != nil {
-					r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
-					return reconcile.Result{}, err
-				}
-				if tagOutput == nil {
-					return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
-				}
-				r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
-			}
 
-		*/
+		// Make sure that there are tags to add before attempting to add them.
+		if len(instance.Spec.Tags) >= 1 {
+			// Tag the new EC2Instance
+			ts := []*ec2.Tag{}
+			for _, t := range instance.Spec.Tags {
+				ts = append(ts, &ec2.Tag{
+					Key:   aws.String(t.Key),
+					Value: aws.String(t.Value),
+				})
+			}
+			tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
+				Resources: []*string{aws.String(ec2InstanceId)},
+				Tags:      ts,
+			})
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				return reconcile.Result{}, err
+			}
+			if tagOutput == nil {
+				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
+			}
+			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+		}
+
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
