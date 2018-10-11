@@ -189,5 +189,5 @@ metadata:
   name: volumeattachment-sample
 spec:
   devicePath: /mnt/arbitrary/device/path
-  instanceName: sample-ec2-instance
+  ec2InstanceName: sample-ec2-instance
   volumeName: volume-sample
