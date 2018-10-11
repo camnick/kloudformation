@@ -21,6 +21,14 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            devicePath:
+              type: string
+            volumeName:
+              type: string
+          required:
+          - devicePath
+          - volumeName
           type: object
         status:
           type: object
