@@ -124,7 +124,7 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 	svc := ec2.New(r.sess)
 	// get the EC2VolumeAttachmentId out of the annotations
 	// if absent then create
-	ec2VolumeAttachmentState, ok := instance.ObjectMeta.Annotations[`ec2VolumeAttachmentState`]
+	ec2VolumeAttachmentResponse, ok := instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EC2VolumeAttachment in %s", *r.sess.Config.Region)
 		attachOutput, err := svc.AttachVolume(&ec2.AttachVolumeInput{
@@ -140,13 +140,13 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 			return reconcile.Result{}, fmt.Errorf(`EC2VolumeAttachmentOutput was nil`)
 		}
 
-		ec2VolumeAttachmentState = *attachOutput.State
+		ec2VolumeAttachmentResponse = *attachOutput.State
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2VolumeAttachment for VolumeId %s ", volume.ObjectMeta.Annotations[`volumeId`])
 
 		// Will appear to be 'attaching' later on can have this update to 'attached'
-		instance.ObjectMeta.Annotations[`ec2VolumeAttachmentState`] = ec2VolumeAttachmentState
-		print(" attachment state is: ")
-		print(instance.ObjectMeta.Annotations[`ec2VolumeAttachmentState`])
+		instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`] = ec2VolumeAttachmentResponse
+		print(" attachment response is: ")
+		print(instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`])
 
 		// Label both involved resources with each other's IDs. For now. This only works w/ one volume per EC2Instance
 		ec2Instance.ObjectMeta.Annotations[`attachedVolumes`] = volume.ObjectMeta.Annotations[`volumeId`]

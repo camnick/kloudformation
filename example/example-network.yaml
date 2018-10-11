@@ -182,7 +182,7 @@ spec:
       value: sample-volume
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
-kind: VolumeAttachment
+kind: EC2VolumeAttachment
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
