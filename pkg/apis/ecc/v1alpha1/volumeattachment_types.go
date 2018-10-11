@@ -27,9 +27,9 @@ import (
 type VolumeAttachmentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	DevicePath		string		`json:"devicePath"`
-	InstanceName	string		`json:"instanceName"`
-	VolumeName		string		`json:"volumeName"`
+	DevicePath      string `json:"devicePath"`
+	EC2InstanceName string `json:"ec2InstanceName"`
+	VolumeName      string `json:"volumeName"`
 }
 
 // VolumeAttachmentStatus defines the observed state of VolumeAttachment
