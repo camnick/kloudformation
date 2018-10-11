@@ -89,10 +89,12 @@ func (r *ReconcileVolumeAttachment) Reconcile(request reconcile.Request) (reconc
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			print("YOUR OBJECT WASNT FOUND")
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
+		print("SOMETHING ELSE WENT WRONG READING THE OBJECT")
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
@@ -101,41 +103,29 @@ func (r *ReconcileVolumeAttachment) Reconcile(request reconcile.Request) (reconc
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VolumeName, Namespace: instance.Namespace}, volume)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			print("can't find volume")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(volume.ObjectMeta.Annotations[`volumeId`]) <= 0 {
-		print("volume has no volume id")
 		return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
 	}
-	print("working with volume: ", volume.ObjectMeta.Annotations[`volumeId`])
 
 	ec2Instance := &eccv1alpha1.EC2Instance{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			print(" can't find the ec2 instance ")
-			print(" the spec calls for: ", instance.Spec.EC2InstanceName)
-			print(" would like to be referencing id: ", ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`])
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
-		print("the ec2 instance id isn't right")
 		return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
 	}
-	print("working with ec2Instance: ", ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`])
 
 	svc := ec2.New(r.sess)
 	// get the VolumeAttachmentId out of the annotations
 	// if absent then create
 	volumeAttachmentState, ok := instance.ObjectMeta.Annotations[`volumeAttachmentState`]
 	if !ok {
-		print(" Going to attempt to create the attachment ")
-		print(" The mount path will be: ", instance.Spec.DevicePath)
-		print(" The volumeId is: ", volume.ObjectMeta.Annotations[`volumeId`])
-		print(" The ec2InstanceId is: ", ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`])
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS VolumeAttachment in %s", *r.sess.Config.Region)
 		attachOutput, err := svc.AttachVolume(&ec2.AttachVolumeInput{
 			Device:     aws.String(instance.Spec.DevicePath),
@@ -144,23 +134,26 @@ func (r *ReconcileVolumeAttachment) Reconcile(request reconcile.Request) (reconc
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
-			print("The attachment didn't work.")
-			fmt.Println(err.Error())
 			return reconcile.Result{}, err
 		}
 		if attachOutput == nil {
-			print("the attachment output was nil")
 			return reconcile.Result{}, fmt.Errorf(`VolumeAttachmentOutput was nil`)
 		}
 
 		volumeAttachmentState = *attachOutput.State
-		print("the attachment state is: ", volumeAttachmentState)
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS VolumeAttachment for Volume %s on EC2Instance %s", volume.ObjectMeta.Annotations[`volumeId`], ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`])
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS VolumeAttachment for VolumeId %s ", volume.ObjectMeta.Annotations[`volumeId`])
+
+		// Will appear to be 'attaching' later on can have this update to 'attached'
 		instance.ObjectMeta.Annotations[`volumeAttachmentState`] = volumeAttachmentState
+		print(" attachment state is: ")
+		print(instance.ObjectMeta.Annotations[`volumeAttachmentState`])
 
 		// Label both involved resources with each other's IDs. For now. This only works w/ one volume per EC2Instance
 		ec2Instance.ObjectMeta.Annotations[`attachedVolumes`] = volume.ObjectMeta.Annotations[`volumeId`]
+		print(" should have annotated the ec2 instance: ", ec2Instance.ObjectMeta.Annotations[`attachedVolumes`])
+
 		volume.ObjectMeta.Annotations[`instanceAttachedTo`] = ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]
+		print(" should have annotated the volume: ", volume.ObjectMeta.Annotations[`instanceAttachedTo`])
 
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `volumeattachments.ecc.aws.gotopple.com`)
 
