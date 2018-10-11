@@ -133,6 +133,9 @@ func (r *ReconcileVolumeAttachment) Reconcile(request reconcile.Request) (reconc
 	volumeAttachmentState, ok := instance.ObjectMeta.Annotations[`volumeAttachmentState`]
 	if !ok {
 		print(" Going to attempt to create the attachment ")
+		print(" The mount path will be: ", instance.Spec.DevicePath)
+		print(" The volumeId is: ", volume.ObjectMeta.Annotations[`volumeId`])
+		print(" The ec2InstanceId is: ", ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`])
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS VolumeAttachment in %s", *r.sess.Config.Region)
 		attachOutput, err := svc.AttachVolume(&ec2.AttachVolumeInput{
 			Device:     aws.String(instance.Spec.DevicePath),

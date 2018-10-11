@@ -5,6 +5,6 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: volumeattachment-sample
 spec:
-  devicePath: /mnt/arbitrary/device/path
+  devicePath: /dev/sample
   ec2InstanceName: sample-ec2-instance
   volumeName: volume-sample
