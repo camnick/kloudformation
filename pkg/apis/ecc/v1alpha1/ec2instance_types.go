@@ -55,8 +55,8 @@ type EC2InstanceSpec struct {
 	//RamDiskId													string																	`json:"ramDiskId"`
 	//SecurityGroupIds									[]SecurityGroupId												`json:"securityGroupId"` // I don't think this is right
 	//SecurityGroups										[]SecurityGroup													`json:"securityGroup"`
-	SubnetName 		string        `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
-	Tags              []ResourceTag `json:"tags"`
+	SubnetName string `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
+	//Tags              []ResourceTag `json:"tags"`
 	//UserData													string																	`json:"userData"`
 }
 

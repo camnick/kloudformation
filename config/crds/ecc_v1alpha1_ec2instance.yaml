@@ -28,23 +28,10 @@ spec:
               type: string
             subnetName:
               type: string
-            tags:
-              items:
-                properties:
-                  key:
-                    type: string
-                  value:
-                    type: string
-                required:
-                - key
-                - value
-                type: object
-              type: array
           required:
           - imageId
           - instanceType
           - subnetName
-          - tags
           type: object
         status:
           type: object
