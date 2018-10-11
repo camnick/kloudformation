@@ -188,6 +188,6 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: volumeattachment-sample
 spec:
-  devicePath: /dev/sample
+  devicePath: /dev/xvdb
   ec2InstanceName: sample-ec2-instance
   volumeName: volume-sample

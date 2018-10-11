@@ -145,6 +145,7 @@ func (r *ReconcileVolumeAttachment) Reconcile(request reconcile.Request) (reconc
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			print("The attachment didn't work.")
+			fmt.Println(err.Error())
 			return reconcile.Result{}, err
 		}
 		if attachOutput == nil {
