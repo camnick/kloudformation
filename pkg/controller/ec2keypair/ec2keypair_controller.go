@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -115,32 +115,11 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		if createOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`CreateEC2KeyPairOutput was nil`)
 		}
-
 		awsKeyName = *createOutput.KeyName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
-		print(*createOutput.KeyFingerprint)
-		print(*createOutput.KeyMaterial)
 
-		// Create Kubernetes secret
-		keySecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Name + "-private-key",
-				Namespace: instance.Namespace,
-			},
-			Data: map[string][]byte{
-				"PrivateKey":  []byte(*createOutput.KeyMaterial),
-				"FingerPrint": []byte(*createOutput.KeyFingerprint),
-			},
-		}
-
-		err = r.Create(context.TODO(), keySecret)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
 			// the EC2KeyPair resource will not be able to track the created EC2KeyPair and
@@ -189,32 +168,37 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
-		/*
-			// Make sure that there are tags to add before attempting to add them.
-			if len(instance.Spec.Tags) >= 1 {
-				// Tag the new EC2KeyPair
-				ts := []*ec2.Tag{}
-				for _, t := range instance.Spec.Tags {
-					ts = append(ts, &ec2.Tag{
-						Key:   aws.String(t.Key),
-						Value: aws.String(t.Value),
-					})
-				}
-				tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
-					Resources: []*string{aws.String(awsKeyName)},
-					Tags:      ts,
-				})
-				if err != nil {
-					r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
-					return reconcile.Result{}, err
-				}
-				if tagOutput == nil {
-					return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
-				}
-				r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+		print("ec2keypair created okay")
+
+		//create kubernetes secret stuff goes here
+		print("defining associated kubernetes secret")
+		// Create Kubernetes secret
+		keySecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instance.Name + "-private-key",
+				Namespace: instance.Namespace,
+			},
+			Data: map[string][]byte{
+				"PrivateKey":  []byte(*createOutput.KeyMaterial),
+				"FingerPrint": []byte(*createOutput.KeyFingerprint),
+			},
+		}
+		//r.events.Eventf(keySecret, `Normal`, `Created`, "Created Kubernetes Secret %s", keySecret.Name)
+		//keySecret.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
+		print("checking if the secret exists(it shouldnt)")
+		found := &corev1.Secret{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: keySecret.Name, Namespace: keySecret.Namespace}, found)
+		if err != nil && errors.IsNotFound(err) {
+			print("pretend the correct logging line was here")
+			print("creating the secret, as it doesn't appear to exist")
+			//log.Printf("Creating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
+			err = r.Create(context.TODO(), keySecret)
+			if err != nil {
+				return reconcile.Result{}, err
 			}
-		*/
+		}
+
+		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
@@ -255,6 +239,9 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2KeyPair and removed finalizers")
+
+		// insert secret deletion stuff here
+
 	}
 
 	return reconcile.Result{}, nil
