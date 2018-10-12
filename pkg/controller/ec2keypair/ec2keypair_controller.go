@@ -134,7 +134,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-				KeyName: aws.String(awsKeyName),
+				KeyName: aws.String(instance.Spec.EC2KeyPairName),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
@@ -212,7 +212,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 
 		// must delete
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-			KeyName: aws.String(awsKeyName),
+			KeyName: aws.String(instance.Spec.EC2KeyPairName),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2KeyPair: %s", err.Error())
