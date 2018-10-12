@@ -25,7 +25,9 @@ import (
 	awssession "github.com/aws/aws-sdk-go/aws/session"
 	ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	//"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -120,6 +122,23 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 		print(*createOutput.KeyFingerprint)
 		print(*createOutput.KeyMaterial)
+
+		// Create Kubernetes secret
+		keySecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instance.Name + "-private-key",
+				Namespace: instance.Namespace,
+			},
+			Data: map[string][]byte{
+				"PrivateKey":  []byte(*createOutput.KeyMaterial),
+				"FingerPrint": []byte(*createOutput.KeyFingerprint),
+			},
+		}
+
+		err = r.Create(context.TODO(), keySecret)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
