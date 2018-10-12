@@ -134,7 +134,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-				KeyName: aws.String(instance.Name),
+				KeyName: aws.String(instance.Spec.EC2KeyPairName),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
@@ -187,6 +187,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		//keySecret.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		print("checking if the secret exists(it shouldnt)")
 		found := &corev1.Secret{}
+		print(keySecret.Name, keySecret.Namespace, "keyname and namespace")
 		err = r.Get(context.TODO(), types.NamespacedName{Name: keySecret.Name, Namespace: keySecret.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
 			print("pretend the correct logging line was here")
@@ -212,9 +213,9 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 
 		// must delete
 		print("attempting to delete")
-		print(" this is the key name: ", instance.Name)
+		print(" this is the key name: ", instance.Spec.EC2KeyPairName)
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-			KeyName: aws.String(instance.Name),
+			KeyName: aws.String(instance.Spec.EC2KeyPairName),
 		})
 		if err != nil {
 			print("the delete didn't work")
