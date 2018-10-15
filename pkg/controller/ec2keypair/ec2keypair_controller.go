@@ -180,6 +180,9 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      instance.Name + "-private-key",
 				Namespace: instance.Namespace,
+				Annotations: map[string]string{
+					"createdBy": instance.Name,
+				},
 			},
 			Data: map[string][]byte{
 				"PrivateKey":  []byte(*createOutput.KeyMaterial),
