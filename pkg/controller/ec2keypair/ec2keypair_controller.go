@@ -188,16 +188,12 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		// create the Secret
 		err = r.Create(context.TODO(), keySecret)
-		/*
-			if err != nil {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Failed to create the secret: %s", err.Error())
-				return reconcile.Result{}, err
-			}
-		*/
 
 		//keySecret.ObjectMeta.Annotations[`generatedBy`] = awsKeyName
 		keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
+
+		err = r.Update(context.TODO(), keySecret)
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
