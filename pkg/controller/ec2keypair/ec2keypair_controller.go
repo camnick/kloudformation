@@ -195,9 +195,8 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		//r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
-
-		//err = r.Update(context.TODO(), keySecret)
+		//log it
+		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
