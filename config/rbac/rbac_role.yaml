@@ -28,6 +28,16 @@ rules:
   - update
   - patch
   - delete
+- resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:

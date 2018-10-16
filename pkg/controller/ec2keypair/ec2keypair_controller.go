@@ -85,6 +85,7 @@ type ReconcileEC2KeyPair struct {
 // and what is in the EC2KeyPair.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=ec2keypairs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:resources=secrets,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the EC2KeyPair instance
 	instance := &eccv1alpha1.EC2KeyPair{}
@@ -183,7 +184,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 					"createdBy":  instance.Name,
 					"anotherKey": "another value",
 				},
-				//Finalizers: []string{"ec2keypairs.ecc.aws.gotopple.com"},
+				Finalizers: []string{`test`},
 			},
 			Data: map[string][]byte{
 				"PrivateKey": []byte(*createOutput.KeyMaterial),
@@ -195,13 +196,15 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		if err != nil {
 			print("creating the secret didn't work")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
+			print(err.Error())
 			return reconcile.Result{}, err
 		}
 		//log creation
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added annotations")
 		//add finalizer to keySecret
-		print("going to try to append finalizers")
-		keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
+		//print("going to try to append finalizers")
+
+		//keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 		//update keySecret
 		err = r.Update(context.TODO(), keySecret)
 		if err != nil {
@@ -225,6 +228,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `ec2keypairs.ecc.aws.gotopple.com` {
