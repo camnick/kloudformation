@@ -183,7 +183,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 					"createdBy":  instance.Name,
 					"anotherKey": "another value",
 				},
-				//Finalizers: []string{"test"},
+				Finalizers: []string{"test"},
 			},
 			Data: map[string][]byte{
 				"PrivateKey": []byte(*createOutput.KeyMaterial),
