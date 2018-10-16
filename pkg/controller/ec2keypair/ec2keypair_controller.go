@@ -196,11 +196,30 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		//log creation
-		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(keySecret, `Normal`, `Annotated`, "Added annotations")
 		//add finalizer to keySecret
-		keySecret.ObjectMeta.Finalizers = []string{"ec2keypairs.ecc.aws.gotopple.com"}
+
+		keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 		//update keySecret
 		err = r.Update(context.TODO(), keySecret)
+		if err != nil {
+			// If the call to update the resource annotations has failed then
+			// the EC2KeyPair resource will not be able to track the created EC2KeyPair and
+			// no finalizer will have been appended.
+			//
+			// This routine should attempt to delete the AWS EC2KeyPair before
+			// returning the error and retrying.
+
+			r.events.Eventf(keySecret,
+				`Warning`,
+				`ResourceUpdateFailure`,
+				"Failed to update the resource: %s", err.Error())
+
+			// Delete the secret logic here
+			return reconcile.Result{}, err
+		}
+
+		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
