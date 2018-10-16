@@ -192,7 +192,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		// create the Secret from the keySecret struct
 		err = r.Create(context.TODO(), keySecret)
 
-		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
+		//r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 		//err = r.Update(context.TODO(), keySecret)
 
