@@ -195,8 +195,12 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		//log it
+		//log creation
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
+		//add finalizer to keySecret
+		keySecret.ObjectMeta.Finalizers = []string{"ec2keypairs.ecc.aws.gotopple.com"}
+		//update keySecret
+		err = r.Update(context.TODO(), keySecret)
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
