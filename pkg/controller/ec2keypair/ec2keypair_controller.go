@@ -120,8 +120,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
-		print(*createOutput.KeyFingerprint)
-		print(*createOutput.KeyMaterial)
+		//print(*createOutput.KeyMaterial)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -181,22 +180,21 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				Name:      instance.Name + "-private-key",
 				Namespace: instance.Namespace,
 				Annotations: map[string]string{
-					"createdBy": instance.Name,
+					"createdBy":  instance.Name,
+					"anotherKey": "another value",
 				},
+				//Finalizers: []string{"test"},
 			},
 			Data: map[string][]byte{
-				"PrivateKey":  []byte(*createOutput.KeyMaterial),
-				"FingerPrint": []byte(*createOutput.KeyFingerprint),
+				"PrivateKey": []byte(*createOutput.KeyMaterial),
 			},
 		}
-		// create the Secret
+		// create the Secret from the keySecret struct
 		err = r.Create(context.TODO(), keySecret)
 
-		//keySecret.ObjectMeta.Annotations[`generatedBy`] = awsKeyName
-		keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
 
-		err = r.Update(context.TODO(), keySecret)
+		//err = r.Update(context.TODO(), keySecret)
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
