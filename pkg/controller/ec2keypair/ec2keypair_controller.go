@@ -25,11 +25,11 @@ import (
 	awssession "github.com/aws/aws-sdk-go/aws/session"
 	ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	//"k8s.io/apimachinery/pkg/types"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -190,19 +190,22 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			},
 		}
 		// create the Secret from the keySecret struct
+		print("going to create the secret from the struct")
 		err = r.Create(context.TODO(), keySecret)
 		if err != nil {
+			print("creating the secret didn't work")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		//log creation
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added annotations")
 		//add finalizer to keySecret
-
+		print("going to try to append finalizers")
 		keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 		//update keySecret
 		err = r.Update(context.TODO(), keySecret)
 		if err != nil {
+			print("appending finalizer didn't work")
 			// If the call to update the resource annotations has failed then
 			// the EC2KeyPair resource will not be able to track the created EC2KeyPair and
 			// no finalizer will have been appended.
@@ -218,7 +221,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			// Delete the secret logic here
 			return reconcile.Result{}, err
 		}
-
+		print("controller thinks adding the finalizer worked.")
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
