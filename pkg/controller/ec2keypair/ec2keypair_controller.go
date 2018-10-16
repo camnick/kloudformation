@@ -183,7 +183,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 					"createdBy":  instance.Name,
 					"anotherKey": "another value",
 				},
-				Finalizers: []string{"test"},
+				Finalizers: []string{"ec2keypairs.ecc.aws.gotopple.com"},
 			},
 			Data: map[string][]byte{
 				"PrivateKey": []byte(*createOutput.KeyMaterial),
@@ -191,7 +191,10 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		// create the Secret from the keySecret struct
 		err = r.Create(context.TODO(), keySecret)
-
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
+			return reconcile.Result{}, err
+		}
 		//r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 		//err = r.Update(context.TODO(), keySecret)
