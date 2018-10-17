@@ -102,7 +102,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	svc := ec2.New(r.sess)
-	var privateKeyData *string
+	var privateKeyData string
 	// define the secret to use later
 	keySecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -115,7 +115,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			//Finalizers: []string{`kubernetes`},
 		},
 		Data: map[string][]byte{
-			"PrivateKey": []byte(*privateKeyData),
+			"PrivateKey": []byte(privateKeyData),
 		},
 	}
 
@@ -136,7 +136,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		awsKeyName = *createOutput.KeyName
-		privateKeyData = createOutput.KeyMaterial
+		privateKeyData = *createOutput.KeyMaterial
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
