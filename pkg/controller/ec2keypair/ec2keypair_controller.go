@@ -19,6 +19,7 @@ package ec2keypair
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	aws "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -29,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -101,6 +102,23 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	svc := ec2.New(r.sess)
+	var privateKeyData *string
+	// define the secret to use later
+	keySecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-private-key",
+			Namespace: instance.Namespace,
+			Annotations: map[string]string{
+				"createdBy":  instance.Name,
+				"anotherKey": "another value",
+			},
+			//Finalizers: []string{`kubernetes`},
+		},
+		Data: map[string][]byte{
+			"PrivateKey": []byte(*privateKeyData),
+		},
+	}
+
 	// get the EC2KeyPairId out of the annotations
 	// if absent then create
 	awsKeyName, ok := instance.ObjectMeta.Annotations[`awsKeyName`]
@@ -118,6 +136,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		awsKeyName = *createOutput.KeyName
+		privateKeyData = createOutput.KeyMaterial
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
@@ -174,21 +193,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 		// logic to generate kubernetes secret based off ec2keypair here
-		// define the secret
-		keySecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Name + "-private-key",
-				Namespace: instance.Namespace,
-				Annotations: map[string]string{
-					"createdBy":  instance.Name,
-					"anotherKey": "another value",
-				},
-				Finalizers: []string{`kubernetes`},
-			},
-			Data: map[string][]byte{
-				"PrivateKey": []byte(*createOutput.KeyMaterial),
-			},
-		}
 		// create the Secret from the keySecret struct
 		print("going to create the secret from the struct")
 		err = r.Create(context.TODO(), keySecret)
@@ -237,6 +241,28 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 		}
 		// delete the secret
+		found := &corev1.Secret{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: keySecret.Name, Namespace: keySecret.Namespace}, found)
+		if err != nil && errors.IsNotFound(err) {
+			//log.Printf("Creating Deployment %s/%s\n", keySecret.Namespace, keySecret.Name)
+			//err = r.Create(context.TODO(), keySecret)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// TODO(user): Change this for the object type created by your controller
+		// Update the found object and write the result back if there are any changes
+		if !reflect.DeepEqual(keySecret.Data, found.Data) {
+			found.Data = keySecret.Data
+			//log.Printf("Updating Secret %s/%s\n", keySecret.Namespace, keySecret.Name)
+			err = r.Update(context.TODO(), found)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
 
 		// must delete
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
