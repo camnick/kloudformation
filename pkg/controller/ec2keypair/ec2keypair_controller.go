@@ -121,7 +121,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
-		//print(*createOutput.KeyMaterial)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -184,7 +183,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 					"createdBy":  instance.Name,
 					"anotherKey": "another value",
 				},
-				Finalizers: []string{`test`},
+				//Finalizers: []string{`ec2keypairs.ecc.aws.gotopple.com`},
 			},
 			Data: map[string][]byte{
 				"PrivateKey": []byte(*createOutput.KeyMaterial),
@@ -237,6 +236,12 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
+		// delete the secret
+
+
+
+
+
 
 		// must delete
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
