@@ -73,6 +73,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 }
 
 var _ reconcile.Reconciler = &ReconcileEC2KeyPair{}
+var privateKeyMaterial []byte
 
 // ReconcileEC2KeyPair reconciles a EC2KeyPair object
 type ReconcileEC2KeyPair struct {
@@ -102,7 +103,9 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	svc := ec2.New(r.sess)
-	var privateKeyData string
+	
+
+
 	// define the secret to use later
 	keySecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -115,7 +118,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			//Finalizers: []string{`kubernetes`},
 		},
 		Data: map[string][]byte{
-			"PrivateKey": []byte(privateKeyData),
+			"PrivateKey": privateKeyMaterial,
 		},
 	}
 
@@ -136,7 +139,8 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		awsKeyName = *createOutput.KeyName
-		privateKeyData = *createOutput.KeyMaterial
+		privateKeyMaterial = []byte(*createOutput.KeyMaterial)
+		println("this is the private key material ", privateKeyMaterial)
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
@@ -194,24 +198,24 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 
 		// logic to generate kubernetes secret based off ec2keypair here
 		// create the Secret from the keySecret struct
-		print("going to create the secret from the struct")
+		println("going to create the secret from the struct")
 		err = r.Create(context.TODO(), keySecret)
 		if err != nil {
-			print("creating the secret didn't work")
+			println("creating the secret didn't work")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
-			print(err.Error())
+			println(err.Error())
 			return reconcile.Result{}, err
 		}
 		//log creation
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added annotations")
 		//add finalizer to keySecret
-		//print("going to try to append finalizers")
+		//println("going to try to append finalizers")
 
 		//keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 		//update keySecret
 		err = r.Update(context.TODO(), keySecret)
 		if err != nil {
-			print("appending finalizer didn't work")
+			println("appending finalizer didn't work")
 			// If the call to update the resource annotations has failed then
 			// the EC2KeyPair resource will not be able to track the created EC2KeyPair and
 			// no finalizer will have been appended.
@@ -227,7 +231,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			// Delete the secret logic here
 			return reconcile.Result{}, err
 		}
-		print("controller thinks adding the finalizer worked.")
+		println("controller thinks adding the finalizer worked.")
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
