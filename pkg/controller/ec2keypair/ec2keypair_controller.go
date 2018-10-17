@@ -183,7 +183,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 					"createdBy":  instance.Name,
 					"anotherKey": "another value",
 				},
-				//Finalizers: []string{`ec2keypairs.ecc.aws.gotopple.com`},
+				Finalizers: []string{`kubernetes`},
 			},
 			Data: map[string][]byte{
 				"PrivateKey": []byte(*createOutput.KeyMaterial),
@@ -237,11 +237,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 		}
 		// delete the secret
-
-
-
-
-
 
 		// must delete
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
