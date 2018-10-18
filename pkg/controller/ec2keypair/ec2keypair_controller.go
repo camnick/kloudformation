@@ -73,7 +73,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 }
 
 var _ reconcile.Reconciler = &ReconcileEC2KeyPair{}
-var privateKeyMaterial []byte
+var privateKeyMaterial *string
 
 // ReconcileEC2KeyPair reconciles a EC2KeyPair object
 type ReconcileEC2KeyPair struct {
@@ -103,8 +103,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	svc := ec2.New(r.sess)
-	
-
 
 	// define the secret to use later
 	keySecret := &corev1.Secret{
@@ -118,7 +116,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			//Finalizers: []string{`kubernetes`},
 		},
 		Data: map[string][]byte{
-			"PrivateKey": privateKeyMaterial,
+			"PrivateKey": []byte(*privateKeyMaterial),
 		},
 	}
 
@@ -139,7 +137,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		awsKeyName = *createOutput.KeyName
-		privateKeyMaterial = []byte(*createOutput.KeyMaterial)
+		privateKeyMaterial = createOutput.KeyMaterial
 		println("this is the private key material ", privateKeyMaterial)
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
