@@ -266,15 +266,22 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		// delete the secret
 		found := &corev1.Secret{}
 		println("trying to delete the material below:")
-
+		err = r.Delete(context.TODO(), keySecret)
+		if err != nil {
+			println(" your secret deletion failed")
+		} else {
+			println("your deletion worked?!?!")
+		}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: keySecret.Name, Namespace: keySecret.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
 			//log.Printf("Creating Deployment %s/%s\n", keySecret.Namespace, keySecret.Name)
-			//err = r.Create(context.TODO(), keySecret)
+			err = r.Create(context.TODO(), keySecret)
 			if err != nil {
+				println("error")
 				return reconcile.Result{}, err
 			}
 		} else if err != nil {
+			println("errrrror")
 			return reconcile.Result{}, err
 		}
 
@@ -283,13 +290,15 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		if !reflect.DeepEqual(keySecret.Data, found.Data) {
 			println("making the found data equal to the keysecret data")
 			found.Data = keySecret.Data
+			println("updating the context")
 			//log.Printf("Updating Secret %s/%s\n", keySecret.Namespace, keySecret.Name)
 			err = r.Update(context.TODO(), found)
 			if err != nil {
+				println("there was an error")
 				return reconcile.Result{}, err
 			}
 		}
-
+		println("trying to delete the ec2 keypair")
 		// must delete
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
 			KeyName: aws.String(awsKeyName),
@@ -311,7 +320,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				return reconcile.Result{}, err
 			}
 		}
-
+		println("keypair deleted")
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
