@@ -19,7 +19,7 @@ package ec2keypair
 import (
 	"context"
 	"fmt"
-	"reflect"
+	//"reflect"
 
 	aws "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	//"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -157,9 +157,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				"PrivateKey": []byte(*privateKeyMaterial),
 			},
 		}
-		/////////////
 
-		println("this is the address of private key material ", privateKeyMaterial)
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
@@ -217,10 +215,8 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 
 		// logic to generate kubernetes secret based off ec2keypair here
 		// create the Secret from the keySecret struct
-		println("going to create the secret from the struct")
 		err = r.Create(context.TODO(), keySecret)
 		if err != nil {
-			println("creating the secret didn't work")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			println(err.Error())
 			return reconcile.Result{}, err
@@ -234,7 +230,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		//update keySecret
 		err = r.Update(context.TODO(), keySecret)
 		if err != nil {
-			println("appending finalizer didn't work")
 			// If the call to update the resource annotations has failed then
 			// the EC2KeyPair resource will not be able to track the created EC2KeyPair and
 			// no finalizer will have been appended.
@@ -250,7 +245,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			// Delete the secret logic here
 			return reconcile.Result{}, err
 		}
-		println("controller thinks adding the finalizer worked.")
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
@@ -264,41 +258,16 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 		}
 		// delete the secret
-		found := &corev1.Secret{}
-		println("trying to delete the material below:")
 		err = r.Delete(context.TODO(), keySecret)
 		if err != nil {
+			//placeholder for real logging
 			println(" your secret deletion failed")
 		} else {
+			//placeholder for real logging
 			println("your deletion worked?!?!")
 		}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: keySecret.Name, Namespace: keySecret.Namespace}, found)
-		if err != nil && errors.IsNotFound(err) {
-			//log.Printf("Creating Deployment %s/%s\n", keySecret.Namespace, keySecret.Name)
-			err = r.Create(context.TODO(), keySecret)
-			if err != nil {
-				println("error")
-				return reconcile.Result{}, err
-			}
-		} else if err != nil {
-			println("errrrror")
-			return reconcile.Result{}, err
-		}
-
 		// TODO(user): Change this for the object type created by your controller
 		// Update the found object and write the result back if there are any changes
-		if !reflect.DeepEqual(keySecret.Data, found.Data) {
-			println("making the found data equal to the keysecret data")
-			found.Data = keySecret.Data
-			println("updating the context")
-			//log.Printf("Updating Secret %s/%s\n", keySecret.Namespace, keySecret.Name)
-			err = r.Update(context.TODO(), found)
-			if err != nil {
-				println("there was an error")
-				return reconcile.Result{}, err
-			}
-		}
-		println("trying to delete the ec2 keypair")
 		// must delete
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
 			KeyName: aws.String(awsKeyName),
@@ -320,7 +289,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				return reconcile.Result{}, err
 			}
 		}
-		println("keypair deleted")
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
