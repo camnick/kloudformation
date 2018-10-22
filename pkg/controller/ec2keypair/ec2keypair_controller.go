@@ -225,8 +225,8 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Event(keySecret, `Normal`, `Annotated`, "Added annotations")
 		//add finalizer to keySecret
 		//println("going to try to append finalizers")
-
-		//keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
+		// next line breaks stuff
+		//keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `kubernetes`)
 		//update keySecret
 		err = r.Update(context.TODO(), keySecret)
 		if err != nil {
