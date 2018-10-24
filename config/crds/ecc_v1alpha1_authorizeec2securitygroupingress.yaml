@@ -21,6 +21,22 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            fromPort:
+              format: int64
+              type: integer
+            ipProtocol:
+              type: string
+            sourceCidrIp:
+              type: string
+            toPort:
+              format: int64
+              type: integer
+          required:
+          - sourceCidrIp
+          - fromPort
+          - toPort
+          - ipProtocol
           type: object
         status:
           type: object

@@ -25,11 +25,11 @@ import (
 
 // AuthorizeEC2SecurityGroupIngressSpec defines the desired state of AuthorizeEC2SecurityGroupIngress
 type AuthorizeEC2SecurityGroupIngressSpec struct {
-	SourceCidrIp 			string 				`json:"sourceCidrIp"`
-	EC2SecurityGroupName		string	`json:"ec2SecurityGroupName"`
-	FromPort								int			`json:"fromPort"`
-	ToPort									int			`json:"toPort"`
-	IpProtocol							string	`json:"ipProtocol"`
+	SourceCidrIp         string `json:"sourceCidrIp"`
+	EC2SecurityGroupName string `json:"ec2SecurityGroupName"`
+	FromPort             int64  `json:"fromPort"`
+	ToPort               int64  `json:"toPort"`
+	IpProtocol           string `json:"ipProtocol"`
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
