@@ -18,6 +18,7 @@ package ec2instance
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	aws "github.com/aws/aws-sdk-go/aws"
@@ -122,6 +123,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 			// need to fix tags
 			//TagSpecifications: []*ec2.TagSpecifications,
+			UserData: aws.String(base64.StdEncoding.EncodeToString([]byte(instance.Spec.UserData))),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())

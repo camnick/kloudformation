@@ -93,6 +93,7 @@ spec:
   imageId: ami-6cd6f714 #Amazon Linux
   instanceType: t2.micro
   subnetName: example-network-public-a
+  userData: touch /root/test.txt
   tags:
     - key: Name
       value: "Test Instance"

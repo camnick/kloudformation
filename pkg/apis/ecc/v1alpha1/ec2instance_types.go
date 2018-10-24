@@ -57,7 +57,7 @@ type EC2InstanceSpec struct {
 	//SecurityGroups										[]SecurityGroup													`json:"securityGroup"`
 	SubnetName string        `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
 	Tags       []ResourceTag `json:"tags"`
-	//UserData													string																	`json:"userData"`
+	UserData   string        `json:"userData"`
 }
 
 // EC2InstanceStatus defines the observed state of EC2Instance

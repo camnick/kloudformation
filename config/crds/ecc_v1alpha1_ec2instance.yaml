@@ -40,11 +40,14 @@ spec:
                 - value
                 type: object
               type: array
+            userData:
+              type: string
           required:
           - imageId
           - instanceType
           - subnetName
           - tags
+          - userData
           type: object
         status:
           type: object
