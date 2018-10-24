@@ -105,8 +105,10 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		return reconcile.Result{}, err
 	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+		println("subnet not ready")
 		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 	}
+	println("subnet found: ", subnet.ObjectMeta.Annotations[`subnetid`])
 
 	eip := &eccv1alpha1.EIP{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EIPAllocationName, Namespace: instance.Namespace}, eip)
@@ -116,8 +118,10 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		return reconcile.Result{}, err
 	} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+		println("eip not ready")
 		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 	}
+	println("eip found: ", eip.ObjectMeta.Annotations[`eipAllocationId`])
 
 	vpc := &eccv1alpha1.VPC{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: subnet.Spec.VPCName, Namespace: instance.Namespace}, vpc)
@@ -127,34 +131,41 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		return reconcile.Result{}, err
 	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+		println("vpc not ready")
 		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 	}
 	//internetGateway := &eccv1alpha1.InternetGateway{}
-
+	println("vpc found: ", vpc.ObjectMeta.Annotations[`vpcid`])
 	svc := ec2.New(r.sess)
 	// get the NATGatewayId out of the annotations
 	// if absent then create
 	natGatewayId, ok := instance.ObjectMeta.Annotations[`natGatewayId`]
 	if !ok {
+		println("going to attempt to greate the nat gateway")
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS NATGateway in %s", *r.sess.Config.Region)
 
-		// first check that the VPC has an InternetGateway.
-
-		internetGatewayAttached, ok := vpc.ObjectMeta.Annotations[`attachedInternetGatewayId`]
+		/*// first check that the VPC has an InternetGateway.
+		println("looking for the attachedInternetGateway id")
+		println(vpc.ObjectMeta.Annotations[`attachedInternetGatewayId`])
+		internetGatewayId, ok := vpc.ObjectMeta.Annotations[`attachedInternetGatewayId`]
 		if !ok {
+			println("no attached internetGateway detected")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: VPC %s has no InternetGateway", vpc.ObjectMeta.Annotations[`vpcid`])
 			return reconcile.Result{}, fmt.Errorf(`VPC has no InternetGateway`)
 		}
-
+		println("The internetGatewayId is: ", internetGatewayId)
+		*/
 		createOutput, err := svc.CreateNatGateway(&ec2.CreateNatGatewayInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
 			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 		})
 		if err != nil {
+			println("create failed")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		if createOutput == nil {
+			println("create output was empty")
 			return reconcile.Result{}, fmt.Errorf(`CreateNatGatewayOutput was nil`)
 		}
 
@@ -162,7 +173,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS NATGateway (%s)", natGatewayId)
 		instance.ObjectMeta.Annotations[`natGatewayId`] = natGatewayId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `natgateways.ecc.aws.gotopple.com`)
-
+		println("finalizers were added, all done.")
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
