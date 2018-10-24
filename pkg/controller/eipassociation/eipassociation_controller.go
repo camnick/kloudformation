@@ -101,10 +101,12 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.AllocationName, Namespace: instance.Namespace}, eip)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: EIP in spec not found")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: EIP not ready")
 		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 	}
 
@@ -112,10 +114,12 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: EC2Instance in spec not found")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: EC2Instance not ready")
 		return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
 	}
 

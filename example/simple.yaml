@@ -60,30 +60,6 @@ spec:
      value: public-a
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
-kind: Subnet
-metadata:
-  name: example-network-public-b
-spec:
-  vpcName: example-network
-  availabilityZone: "us-west-2b"
-  cidrBlock: "10.20.120.0/24"
-  tags:
-   - key: Name
-     value: public-b
----
-apiVersion: ecc.aws.gotopple.com/v1alpha1
-kind: Subnet
-metadata:
-  name: example-network-public-c
-spec:
-  vpcName: example-network
-  availabilityZone: "us-west-2c"
-  cidrBlock: "10.20.130.0/24"
-  tags:
-   - key: Name
-     value: public-c
----
-apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: EC2Instance
 metadata:
   labels:
@@ -95,6 +71,7 @@ spec:
   subnetName: example-network-public-a
   userData: '#!/usr/bin/env bash
             touch /home/ec2-user/test.txt'
+  ec2KeyPair: ec2keypair-sample
   tags:
     - key: Name
       value: "Test Instance"
@@ -132,7 +109,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: route-sample
 spec:
-  destinationCidrBlock: "192.168.1.0/24"
+  destinationCidrBlock: "0.0.0.0/0"
   routeTableName: routetable-sample
   gatewayName: internetgateway-sample
 ---
@@ -168,31 +145,6 @@ spec:
   tags:
     - key: Name
       value: Amazing-NAT-Gateway
----
-apiVersion: ecc.aws.gotopple.com/v1alpha1
-kind: Volume
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: volume-sample
-spec:
-  availabilityZone: us-west-2a
-  size: 8
-  volumeType: gp2
-  tags:
-    - key: Name
-      value: sample-volume
----
-apiVersion: ecc.aws.gotopple.com/v1alpha1
-kind: EC2VolumeAttachment
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: volumeattachment-sample
-spec:
-  devicePath: /dev/xvdb
-  ec2InstanceName: sample-ec2-instance
-  volumeName: volume-sample
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: EC2KeyPair
