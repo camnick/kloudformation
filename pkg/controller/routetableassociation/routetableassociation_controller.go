@@ -1,5 +1,5 @@
-/*
-Copyright 2018 The KloudFormation authors.
+routetableassociation/*
+Copyright 2018 Jeff Nickoloff (jeff@allingeek.com).
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,40 +18,38 @@ package routetableassociation
 
 import (
 	"context"
-	"log"
-	"reflect"
+	"fmt"
 
+	aws "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	awssession "github.com/aws/aws-sdk-go/aws/session"
+	ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
-
 // Add creates a new RouteTableAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this ecc.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileRouteTableAssociation{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	sess := awssession.Must(awssession.NewSessionWithOptions(awssession.Options{
+		SharedConfigState: awssession.SharedConfigEnable,
+	}))
+	r := mgr.GetRecorder(`routetableassociation-controller`)
+	return &ReconcileRouteTableAssociation{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -68,16 +66,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by RouteTableAssociation - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &eccv1alpha1.RouteTableAssociation{},
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -87,14 +75,13 @@ var _ reconcile.Reconciler = &ReconcileRouteTableAssociation{}
 type ReconcileRouteTableAssociation struct {
 	client.Client
 	scheme *runtime.Scheme
+	sess   *awssession.Session
+	events record.EventRecorder
 }
 
 // Reconcile reads that state of the cluster for a RouteTableAssociation object and makes changes based on the state read
 // and what is in the RouteTableAssociation.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=routetableassociations,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the RouteTableAssociation instance
@@ -109,58 +96,144 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
+	// check if subnet is ready and confirm id is good
+	subnet := &eccv1alpha1.Subnet{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
 		return reconcile.Result{}, err
+	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+	}
+	// check if route table is ready and confirm id is good
+	routeTable := &eccv1alpha1.RouteTable{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Create(context.TODO(), deploy)
+
+	svc := ec2.New(r.sess)
+	// get the RouteTableAssociationId out of the annotations
+	// if absent then create
+	routeTableAssociationId, ok := instance.ObjectMeta.Annotations[`routeTableAssociationId`]
+	if !ok {
+		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTableAssociation in %s", *r.sess.Config.Region)
+		associateOutput, err := svc.AssociateRouteTable(&ec2.AssociateRouteTable{
+			RouteTableId:			aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
+			SubnetId:					aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
+		})
 		if err != nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
+		if associateOutput == nil {
+			return reconcile.Result{}, fmt.Errorf(`AssociateOutput was nil`)
+		}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Printf("Updating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Update(context.TODO(), found)
+		routeTableAssociationId = *associateOutput.AssociationId
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTableAssociation (%s)", routeTableAssociationId)
+		instance.ObjectMeta.Annotations[`routeTableAssociationId`] = routeTableAssociationId
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routetableassociations.ecc.aws.gotopple.com`)
+
+		err = r.Update(context.TODO(), instance)
 		if err != nil {
+			// If the call to update the resource annotations has failed then
+			// the RouteTableAssociation resource will not be able to track the created RouteTableAssociation and
+			// no finalizer will have been appended.
+			//
+			// This routine should attempt to delete the AWS RouteTableAssociation before
+			// returning the error and retrying.
+
+			r.events.Eventf(instance,
+				`Warning`,
+				`ResourceUpdateFailure`,
+				"Failed to update the resource: %s", err.Error())
+
+			disassociateOutput, ierr := svc.DisassociateRouteTable(&ec2.DisassociateRouteTableInput{
+				AssociationId: aws.String(routeTableAssociationId),
+			})
+			if ierr != nil {
+				// Send an appropriate event that has been annotated
+				// for async AWS resource GC.
+				r.events.AnnotatedEventf(instance,
+					map[string]string{`cleanupRouteTableAssociationId`: routeTableAssociationId},
+					`Warning`,
+					`DeleteFailure`,
+					"Unable to delete the RouteTableAssociation: %s", ierr.Error())
+
+				if aerr, ok := ierr.(awserr.Error); ok {
+					switch aerr.Code() {
+					default:
+						fmt.Println(aerr.Error())
+					}
+				} else {
+					// Print the error, cast err to awserr.Error to get the Code and
+					// Message from an error.
+					fmt.Println(ierr.Error())
+				}
+
+			} else if disassociateOutput == nil {
+				// Send an appropriate event that has been annotated
+				// for async AWS resource GC.
+				r.events.AnnotatedEventf(instance,
+					map[string]string{`cleanupRouteTableAssociationId`: routeTableAssociationId},
+					`Warning`,
+					`DeleteAmbiguity`,
+					"Attempt to delete the RouteTableAssociation recieved a nil response")
+				return reconcile.Result{}, fmt.Errorf(`DisassociateOutput was nil`)
+			}
 			return reconcile.Result{}, err
 		}
+		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+
+	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `routetableassociations.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
+		}
+
+		// must delete
+		_, err = svc.DisassociateRouteTable(&ec2.DisassociateRouteTableInput{
+			AssociationId: aws.String(routeTableAssociationId),
+		})
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the RouteTableAssociation: %s", err.Error())
+
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case `InvalidRouteTableAssociationID.NotFound`:
+					// we want to keep going
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The RouteTableAssociation: %s was already deleted", err.Error())
+				default:
+					return reconcile.Result{}, err
+				}
+			} else {
+				return reconcile.Result{}, err
+			}
+		}
+
+		// after a successful delete update the resource with the removed finalizer
+		err = r.Update(context.TODO(), instance)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Deleted`, "Deleted RouteTableAssociation and removed finalizers")
 	}
+
 	return reconcile.Result{}, nil
 }

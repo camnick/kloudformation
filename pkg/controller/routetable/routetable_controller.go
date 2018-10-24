@@ -128,7 +128,6 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		routeTableId = *createOutput.RouteTable.RouteTableId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routeTableId)
 		instance.ObjectMeta.Annotations[`routeTableId`] = routeTableId
-		instance.ObjectMeta.Annotations[`fuckface`] = "McShitPiss"
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routeTables.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
