@@ -21,6 +21,14 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            description:
+              type: string
+            vpcName:
+              type: string
+          required:
+          - vpcName
+          - description
           type: object
         status:
           type: object
