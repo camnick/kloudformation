@@ -1,0 +1,11 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: Subnet
+metadata:
+  name: example-network-public-c
+spec:
+  vpcName: example-network
+  availabilityZone: "us-west-2c"
+  cidrBlock: "10.20.130.0/24"
+  tags:
+   - key: Name
+     value: public-c
