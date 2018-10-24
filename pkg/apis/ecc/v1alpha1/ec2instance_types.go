@@ -44,7 +44,7 @@ type EC2InstanceSpec struct {
 	//Ipv6AddressCount 									int64 																	`json:"ipv6AddressCount"`
 	//Ipv6Addresses 										[]InstanceIpv6Address 									`json"ipv6Address"`
 	//KernalId 													string 																	`json:"kernalId"`
-	//KeyName 													string 																	`json:"keyName"`
+	EC2KeyPair string `json:"ec2KeyPair"`
 	//LaunchTemplate 										struct 																	`json:"launchTemplate"`
 	//MaxCount int64 `json:"maxCount"`
 	//MinCount int64 `json:"minCount"`

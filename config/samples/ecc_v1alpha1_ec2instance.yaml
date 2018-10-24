@@ -9,6 +9,7 @@ spec:
   instanceType: t2.micro
   subnetName: example-network-public-a
   userData: touch /root/test.txt
+  ec2KeyPair: ec2keypair-sample
   tags:
     - key: Name
       value: "Test Instance"
