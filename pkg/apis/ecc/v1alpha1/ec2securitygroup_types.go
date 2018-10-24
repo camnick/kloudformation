@@ -25,6 +25,8 @@ import (
 
 // EC2SecurityGroupSpec defines the desired state of EC2SecurityGroup
 type EC2SecurityGroupSpec struct {
+	EC2SecurityGroupName	string	`json:"ec2SecurityGroupName"`
+	VPCName								string	`json:"vpcName"`
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
