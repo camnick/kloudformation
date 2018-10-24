@@ -23,6 +23,14 @@ spec:
         spec:
           type: object
         status:
+          properties:
+            routeTableName:
+              type: string
+            subnetName:
+              type: string
+          required:
+          - routeTableName
+          - subnetName
           type: object
   version: v1alpha1
 status:
