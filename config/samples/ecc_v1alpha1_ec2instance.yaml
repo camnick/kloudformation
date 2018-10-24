@@ -8,7 +8,7 @@ spec:
   imageId: ami-6cd6f714 #Amazon Linux
   instanceType: t2.micro
   subnetName: example-network-public-a
-  userData: touch /root/test.txt
+  userData: touch /home/ec2-user/test.txt
   ec2KeyPair: ec2keypair-sample
   tags:
     - key: Name
