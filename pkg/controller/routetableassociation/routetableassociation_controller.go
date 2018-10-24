@@ -1,4 +1,4 @@
-routetableassociation/*
+/*
 Copyright 2018 Jeff Nickoloff (jeff@allingeek.com).
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -119,7 +119,6 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
-
 	svc := ec2.New(r.sess)
 	// get the RouteTableAssociationId out of the annotations
 	// if absent then create
@@ -127,8 +126,8 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTableAssociation in %s", *r.sess.Config.Region)
 		associateOutput, err := svc.AssociateRouteTable(&ec2.AssociateRouteTable{
-			RouteTableId:			aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
-			SubnetId:					aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
+			RouteTableId: aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
+			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
