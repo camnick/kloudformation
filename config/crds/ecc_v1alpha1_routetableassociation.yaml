@@ -21,8 +21,6 @@ spec:
         metadata:
           type: object
         spec:
-          type: object
-        status:
           properties:
             routeTableName:
               type: string
@@ -31,6 +29,8 @@ spec:
           required:
           - routeTableName
           - subnetName
+          type: object
+        status:
           type: object
   version: v1alpha1
 status:

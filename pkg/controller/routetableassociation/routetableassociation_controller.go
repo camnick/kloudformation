@@ -125,7 +125,7 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 	routeTableAssociationId, ok := instance.ObjectMeta.Annotations[`routeTableAssociationId`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTableAssociation in %s", *r.sess.Config.Region)
-		associateOutput, err := svc.AssociateRouteTable(&ec2.AssociateRouteTable{
+		associateOutput, err := svc.AssociateRouteTable(&ec2.AssociateRouteTableInput{
 			RouteTableId: aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
 			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 		})
