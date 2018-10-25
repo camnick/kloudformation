@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: ec2instances.ecc.aws.gotopple.com
+  name: authorizeec2securitygroupingresses.ecc.aws.gotopple.com
 spec:
   group: ecc.aws.gotopple.com
   names:
-    kind: EC2Instance
-    plural: ec2instances
+    kind: AuthorizeEC2SecurityGroupIngress
+    plural: authorizeec2securitygroupingresses
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -22,32 +22,21 @@ spec:
           type: object
         spec:
           properties:
-            imageId:
+            fromPort:
+              format: int64
+              type: integer
+            ipProtocol:
               type: string
-            instanceType:
+            sourceCidrIp:
               type: string
-            subnetName:
-              type: string
-            tags:
-              items:
-                properties:
-                  key:
-                    type: string
-                  value:
-                    type: string
-                required:
-                - key
-                - value
-                type: object
-              type: array
-            userData:
-              type: string
+            toPort:
+              format: int64
+              type: integer
           required:
-          - imageId
-          - instanceType
-          - subnetName
-          - tags
-          - userData
+          - sourceCidrIp
+          - fromPort
+          - toPort
+          - ipProtocol
           type: object
         status:
           type: object

@@ -7,6 +7,18 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
+  - authorizeec2securitygroupingresss
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
   - ec2instances
   verbs:
   - get
@@ -20,6 +32,28 @@ rules:
   - ecc.aws.gotopple.com
   resources:
   - ec2keypairs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - ec2securitygroups
   verbs:
   - get
   - list
@@ -116,6 +150,18 @@ rules:
   - ecc.aws.gotopple.com
   resources:
   - routetables
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - routetableassociations
   verbs:
   - get
   - list

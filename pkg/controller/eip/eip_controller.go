@@ -101,10 +101,12 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find VPC")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 	}
 

@@ -101,10 +101,12 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC not ready")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "vpcid annotation is 0 len")
 		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 	}
 

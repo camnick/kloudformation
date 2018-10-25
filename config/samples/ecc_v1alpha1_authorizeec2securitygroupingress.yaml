@@ -1,0 +1,12 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: AuthorizeEC2SecurityGroupIngress
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: authorizeec2securitygroupingress-sample
+spec:
+  sourceCidrIp: 0.0.0.0/0
+  ec2SecurityGroupName: ec2securitygroup-sample
+  fromPort: 22
+  toPort: 22
+  ipProtocol: tcp

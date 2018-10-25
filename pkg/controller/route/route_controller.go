@@ -99,30 +99,27 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	routeTable := &eccv1alpha1.RouteTable{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
-	//print(routeTable.ObjectMeta.Annotations[`routeTableId`], " is the routeTableId that will be referenced. ")
-	//print(instance.Spec.RouteTableName, " Is the name of the route table in question. ")
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
 	internetGateway := &eccv1alpha1.InternetGateway{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
-	//print(internetGateway.ObjectMeta.Annotations[`internetGatewayId`], " is the internetGatewayId that will be referenced.")
-	//print(instance.Spec.GatewayName, " Is the name of the InternetGateway in question. ")
 	if err != nil {
-		//print(" Something went wrong with pulling the relevant InternetGateway info.")
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
+			return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "InternetGateway has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 	}
 
@@ -151,14 +148,10 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			return reconcile.Result{}, fmt.Errorf(`CreateRouteOutput was nil`)
 		}
 
-		routeCreated = fmt.Sprint(*createOutput.Return)
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route and added to RouteTable (%s)", routeTable.ObjectMeta.Annotations[`routeTableId`])
 		instance.ObjectMeta.Annotations[`associatedRouteTableId`] = routeTable.ObjectMeta.Annotations[`routeTableId`]
 		instance.ObjectMeta.Annotations[`routeCreated`] = routeCreated
-		//print("checking that both values are working: ", instance.ObjectMeta.Annotations[`associatedRouteTableId`], routeTable.ObjectMeta.Annotations[`routeTableId`])
-		//print("the next line is where the finalizer is applied")
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)
-		//print("**** THE FINALIZER WAS APPLIED***")
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {

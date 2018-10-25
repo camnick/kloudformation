@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: ec2instances.ecc.aws.gotopple.com
+  name: ec2securitygroups.ecc.aws.gotopple.com
 spec:
   group: ecc.aws.gotopple.com
   names:
-    kind: EC2Instance
-    plural: ec2instances
+    kind: EC2SecurityGroup
+    plural: ec2securitygroups
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -22,32 +22,13 @@ spec:
           type: object
         spec:
           properties:
-            imageId:
+            description:
               type: string
-            instanceType:
-              type: string
-            subnetName:
-              type: string
-            tags:
-              items:
-                properties:
-                  key:
-                    type: string
-                  value:
-                    type: string
-                required:
-                - key
-                - value
-                type: object
-              type: array
-            userData:
+            vpcName:
               type: string
           required:
-          - imageId
-          - instanceType
-          - subnetName
-          - tags
-          - userData
+          - vpcName
+          - description
           type: object
         status:
           type: object

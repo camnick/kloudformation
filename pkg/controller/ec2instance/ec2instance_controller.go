@@ -18,6 +18,7 @@ package ec2instance
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	aws "github.com/aws/aws-sdk-go/aws"
@@ -96,16 +97,46 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
 	// check for the subnet that the instance will be launched into and grab the subnetid
 	subnet := &eccv1alpha1.Subnet{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
+			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+	}
+
+	ec2SecurityGroup := &eccv1alpha1.EC2SecurityGroup{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			println(err)
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup")
+			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
+		}
+		return reconcile.Result{}, err
+	} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
+		return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
+	}
+
+	ec2KeyPair := &eccv1alpha1.EC2KeyPair{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2KeyPair, Namespace: instance.Namespace}, ec2KeyPair)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find KeyPair")
+			return reconcile.Result{}, fmt.Errorf(`EC2KeyPair not ready`)
+		}
+		return reconcile.Result{}, err
+	} else if len(ec2KeyPair.ObjectMeta.Annotations[`awsKeyName`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Keypair has no AWS Key Name to lookup")
+		return reconcile.Result{}, fmt.Errorf(`EC2KeyPair not ready`)
 	}
 
 	svc := ec2.New(r.sess)
@@ -120,14 +151,19 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			MaxCount:     aws.Int64(1), //this resource is for a single instance
 			MinCount:     aws.Int64(1), //this resource is for a single instance
 			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
-			// need to fix tags
+			KeyName:      aws.String(ec2KeyPair.ObjectMeta.Annotations[`awsKeyName`]),
+			SecurityGroupIds: []*string{
+				aws.String(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]),
+			}, // need to fix tags
 			//TagSpecifications: []*ec2.TagSpecifications,
+			UserData: aws.String(base64.StdEncoding.EncodeToString([]byte(instance.Spec.UserData))),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		if reservation == nil {
+			r.events.Eventf(instance, `Normal`, `CreateFailure`, "Reservation was nil")
 			return reconcile.Result{}, fmt.Errorf(`Reservation was nil`)
 		}
 		/*

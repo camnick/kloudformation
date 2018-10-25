@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: ec2instances.ecc.aws.gotopple.com
+  name: routetableassociations.ecc.aws.gotopple.com
 spec:
   group: ecc.aws.gotopple.com
   names:
-    kind: EC2Instance
-    plural: ec2instances
+    kind: RouteTableAssociation
+    plural: routetableassociations
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -22,32 +22,13 @@ spec:
           type: object
         spec:
           properties:
-            imageId:
-              type: string
-            instanceType:
+            routeTableName:
               type: string
             subnetName:
               type: string
-            tags:
-              items:
-                properties:
-                  key:
-                    type: string
-                  value:
-                    type: string
-                required:
-                - key
-                - value
-                type: object
-              type: array
-            userData:
-              type: string
           required:
-          - imageId
-          - instanceType
+          - routeTableName
           - subnetName
-          - tags
-          - userData
           type: object
         status:
           type: object

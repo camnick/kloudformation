@@ -101,10 +101,12 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 	}
 
@@ -128,7 +130,6 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		routeTableId = *createOutput.RouteTable.RouteTableId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routeTableId)
 		instance.ObjectMeta.Annotations[`routeTableId`] = routeTableId
-		instance.ObjectMeta.Annotations[`fuckface`] = "McShitPiss"
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routeTables.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)

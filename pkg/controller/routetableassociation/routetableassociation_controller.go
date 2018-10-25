@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package eipassociation
+package routetableassociation
 
 import (
 	"context"
@@ -37,7 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// Add creates a new EIPAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new RouteTableAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -48,20 +48,20 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	sess := awssession.Must(awssession.NewSessionWithOptions(awssession.Options{
 		SharedConfigState: awssession.SharedConfigEnable,
 	}))
-	r := mgr.GetRecorder(`eipassociation-controller`)
-	return &ReconcileEIPAssociation{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
+	r := mgr.GetRecorder(`routetableassociation-controller`)
+	return &ReconcileRouteTableAssociation{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("eipassociation-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("routetableassociation-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to EIPAssociation
-	err = c.Watch(&source.Kind{Type: &eccv1alpha1.EIPAssociation{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to RouteTableAssociation
+	err = c.Watch(&source.Kind{Type: &eccv1alpha1.RouteTableAssociation{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -69,23 +69,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileEIPAssociation{}
+var _ reconcile.Reconciler = &ReconcileRouteTableAssociation{}
 
-// ReconcileEIPAssociation reconciles a EIPAssociation object
-type ReconcileEIPAssociation struct {
+// ReconcileRouteTableAssociation reconciles a RouteTableAssociation object
+type ReconcileRouteTableAssociation struct {
 	client.Client
 	scheme *runtime.Scheme
 	sess   *awssession.Session
 	events record.EventRecorder
 }
 
-// Reconcile reads that state of the cluster for a EIPAssociation object and makes changes based on the state read
-// and what is in the EIPAssociation.Spec
+// Reconcile reads that state of the cluster for a RouteTableAssociation object and makes changes based on the state read
+// and what is in the RouteTableAssociation.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=eipassociations,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// Fetch the EIPAssociation instance
-	instance := &eccv1alpha1.EIPAssociation{}
+// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=routetableassociations,verbs=get;list;watch;create;update;patch;delete
+func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	// Fetch the RouteTableAssociation instance
+	instance := &eccv1alpha1.RouteTableAssociation{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -96,63 +96,63 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
-	eip := &eccv1alpha1.EIP{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.AllocationName, Namespace: instance.Namespace}, eip)
+	// check if subnet is ready and confirm id is good
+	subnet := &eccv1alpha1.Subnet{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found")
-			return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
+			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 		}
 		return reconcile.Result{}, err
-	} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP allocation has ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
+		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 	}
-
-	ec2Instance := &eccv1alpha1.EC2Instance{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
+	// check if route table is ready and confirm id is good
+	routeTable := &eccv1alpha1.RouteTable{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance")
-			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
+			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 		}
 		return reconcile.Result{}, err
-	} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Instance has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
+		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
 	svc := ec2.New(r.sess)
-	// get the EIPAssociationId out of the annotations
+	// get the RouteTableAssociationId out of the annotations
 	// if absent then create
-	eipAssociationId, ok := instance.ObjectMeta.Annotations[`eipAssociationId`]
+	routeTableAssociationId, ok := instance.ObjectMeta.Annotations[`routeTableAssociationId`]
 	if !ok {
-		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EIP Association in %s", *r.sess.Config.Region)
-		associateOutput, err := svc.AssociateAddress(&ec2.AssociateAddressInput{
-			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
-			InstanceId:   aws.String(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]),
+		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTableAssociation in %s", *r.sess.Config.Region)
+		associateOutput, err := svc.AssociateRouteTable(&ec2.AssociateRouteTableInput{
+			RouteTableId: aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
+			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		if associateOutput == nil {
-			return reconcile.Result{}, fmt.Errorf(`associateOutput was nil`)
+			return reconcile.Result{}, fmt.Errorf(`AssociateOutput was nil`)
 		}
 
-		eipAssociationId = *associateOutput.AssociationId
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EIP Association (%s)", eipAssociationId)
-		instance.ObjectMeta.Annotations[`eipAssociationId`] = eipAssociationId
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `eipassociations.ecc.aws.gotopple.com`)
+		routeTableAssociationId = *associateOutput.AssociationId
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTableAssociation (%s)", routeTableAssociationId)
+		instance.ObjectMeta.Annotations[`routeTableAssociationId`] = routeTableAssociationId
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routetableassociations.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
-			// the Subnet resource will not be able to track the created Subnet and
+			// the RouteTableAssociation resource will not be able to track the created RouteTableAssociation and
 			// no finalizer will have been appended.
 			//
-			// This routine should attempt to delete the AWS Subnet before
+			// This routine should attempt to delete the AWS RouteTableAssociation before
 			// returning the error and retrying.
 
 			r.events.Eventf(instance,
@@ -160,17 +160,17 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 				`ResourceUpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
-			disassociateOutput, ierr := svc.DisassociateAddress(&ec2.DisassociateAddressInput{
-				AssociationId: aws.String(eipAssociationId),
+			disassociateOutput, ierr := svc.DisassociateRouteTable(&ec2.DisassociateRouteTableInput{
+				AssociationId: aws.String(routeTableAssociationId),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupEIPAssociationId`: eipAssociationId},
+					map[string]string{`cleanupRouteTableAssociationId`: routeTableAssociationId},
 					`Warning`,
 					`DeleteFailure`,
-					"Unable to delete the Subnet: %s", ierr.Error())
+					"Unable to delete the RouteTableAssociation: %s", ierr.Error())
 
 				if aerr, ok := ierr.(awserr.Error); ok {
 					switch aerr.Code() {
@@ -187,21 +187,20 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupEIPAssociationId`: eipAssociationId},
+					map[string]string{`cleanupRouteTableAssociationId`: routeTableAssociationId},
 					`Warning`,
 					`DeleteAmbiguity`,
-					"Attempt to delete the Subnet recieved a nil response")
-				return reconcile.Result{}, fmt.Errorf(`DisassociateAddressOutput was nil`)
+					"Attempt to delete the RouteTableAssociation recieved a nil response")
+				return reconcile.Result{}, fmt.Errorf(`DisassociateOutput was nil`)
 			}
 			return reconcile.Result{}, err
 		}
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
-		// Make sure that there are tags to add before attempting to add them.
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `eipassociations.ecc.aws.gotopple.com` {
+			if f == `routetableassociations.ecc.aws.gotopple.com` {
 				instance.ObjectMeta.Finalizers = append(
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)
@@ -209,19 +208,19 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		}
 
 		// must delete
-		_, err = svc.DisassociateAddress(&ec2.DisassociateAddressInput{
-			AssociationId: aws.String(eipAssociationId),
+		_, err = svc.DisassociateRouteTable(&ec2.DisassociateRouteTableInput{
+			AssociationId: aws.String(routeTableAssociationId),
 		})
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to disassociate the address: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the RouteTableAssociation: %s", err.Error())
 
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidAssociationId.NotFound`:
+				case `InvalidRouteTableAssociationID.NotFound`:
 					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The address: %s was already disassociated", err.Error())
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The RouteTableAssociation: %s was already deleted", err.Error())
 				default:
 					return reconcile.Result{}, err
 				}
@@ -236,7 +235,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Disassociated address and removed finalizers")
+		r.events.Event(instance, `Normal`, `Deleted`, "Deleted RouteTableAssociation and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

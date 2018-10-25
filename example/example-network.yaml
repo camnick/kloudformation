@@ -93,6 +93,8 @@ spec:
   imageId: ami-6cd6f714 #Amazon Linux
   instanceType: t2.micro
   subnetName: example-network-public-a
+  userData: '#!/usr/bin/env bash
+            touch /home/ec2-user/test.txt'
   tags:
     - key: Name
       value: "Test Instance"
@@ -200,3 +202,13 @@ metadata:
   name: ec2keypair-sample
 spec:
   ec2KeyPairName: sample-keypair
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: RouteTableAssociation
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: routetableassociation-sample
+spec:
+  subnetName: example-network-public-a
+  routeTableName: routetable-sample

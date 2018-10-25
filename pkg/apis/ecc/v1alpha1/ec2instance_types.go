@@ -44,7 +44,7 @@ type EC2InstanceSpec struct {
 	//Ipv6AddressCount 									int64 																	`json:"ipv6AddressCount"`
 	//Ipv6Addresses 										[]InstanceIpv6Address 									`json"ipv6Address"`
 	//KernalId 													string 																	`json:"kernalId"`
-	//KeyName 													string 																	`json:"keyName"`
+	EC2KeyPair string `json:"ec2KeyPair"`
 	//LaunchTemplate 										struct 																	`json:"launchTemplate"`
 	//MaxCount int64 `json:"maxCount"`
 	//MinCount int64 `json:"minCount"`
@@ -53,11 +53,12 @@ type EC2InstanceSpec struct {
 	//Placement													struct																	`json:"placement"`
 	//PrivateIpAddress									string																	`json:"privateIpAddress"`
 	//RamDiskId													string																	`json:"ramDiskId"`
-	//SecurityGroupIds									[]SecurityGroupId												`json:"securityGroupId"` // I don't think this is right
+	//SecurityGroupIds []SecurityGroupId `json:"securityGroupIds"` // I don't think this is right
 	//SecurityGroups										[]SecurityGroup													`json:"securityGroup"`
-	SubnetName string        `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
-	Tags       []ResourceTag `json:"tags"`
-	//UserData													string																	`json:"userData"`
+	SubnetName           string        `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
+	Tags                 []ResourceTag `json:"tags"`
+	UserData             string        `json:"userData"`
+	EC2SecurityGroupName string        `json:"ec2SecurityGroupName"`
 }
 
 // EC2InstanceStatus defines the observed state of EC2Instance
