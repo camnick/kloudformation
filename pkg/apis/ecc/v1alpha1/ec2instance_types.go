@@ -53,11 +53,12 @@ type EC2InstanceSpec struct {
 	//Placement													struct																	`json:"placement"`
 	//PrivateIpAddress									string																	`json:"privateIpAddress"`
 	//RamDiskId													string																	`json:"ramDiskId"`
-	//SecurityGroupIds									[]SecurityGroupId												`json:"securityGroupId"` // I don't think this is right
+	//SecurityGroupIds []SecurityGroupId `json:"securityGroupIds"` // I don't think this is right
 	//SecurityGroups										[]SecurityGroup													`json:"securityGroup"`
-	SubnetName string        `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
-	Tags       []ResourceTag `json:"tags"`
-	UserData   string        `json:"userData"`
+	SubnetName           string        `json:"subnetName"` //Will look up the Subnet by K8S name and retireve ID from annotations
+	Tags                 []ResourceTag `json:"tags"`
+	UserData             string        `json:"userData"`
+	EC2SecurityGroupName string        `json:"ec2SecurityGroupName"`
 }
 
 // EC2InstanceStatus defines the observed state of EC2Instance

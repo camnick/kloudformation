@@ -120,6 +120,17 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, fmt.Errorf(`EC2KeyPair not ready`)
 	}
 
+	ec2SecurityGroup := &eccv1alpha1.EC2SecurityGroup{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
+		return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
+	}
+
 	svc := ec2.New(r.sess)
 	// get the EC2InstanceId out of the annotations
 	// if absent then create
@@ -133,7 +144,9 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			MinCount:     aws.Int64(1), //this resource is for a single instance
 			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 			KeyName:      aws.String(ec2KeyPair.ObjectMeta.Annotations[`awsKeyName`]),
-			// need to fix tags
+			SecurityGroupIds: []*string{
+				aws.String(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]),
+			}, // need to fix tags
 			//TagSpecifications: []*ec2.TagSpecifications,
 			UserData: aws.String(base64.StdEncoding.EncodeToString([]byte(instance.Spec.UserData))),
 		})

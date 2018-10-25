@@ -11,6 +11,7 @@ spec:
   userData: '#!/usr/bin/env bash
             touch /home/ec2-user/test.txt'
   ec2KeyPair: ec2keypair-sample
+  ec2SecurityGroupName: ec2securitygroup-sample
   tags:
     - key: Name
       value: "Test Instance"
