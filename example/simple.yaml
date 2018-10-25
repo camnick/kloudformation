@@ -164,3 +164,27 @@ metadata:
 spec:
   subnetName: example-network-public-a
   routeTableName: routetable-sample
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2SecurityGroup
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ec2securitygroup-sample
+spec:
+  ec2SecurityGroupName: sample-securitygroup
+  vpcName: example-network
+  description: an aws ec2 security group
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: AuthorizeEC2SecurityGroupIngress
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: authorizeec2securitygroupingress-sample
+spec:
+  sourceCidrIp: 0.0.0.0/0
+  ec2SecurityGroupName: ec2securitygroup-sample
+  fromPort: 22
+  toPort: 22
+  ipProtocol: tcp
