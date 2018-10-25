@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -139,7 +139,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		if createOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`CreateEC2KeyPairOutput was nil`)
 		}
-
 		awsKeyName = *createOutput.KeyName
 		privateKeyMaterial = createOutput.KeyMaterial
 		//update the keymaterial field in the keySecret struct with the new privateKeyMaterial value
@@ -161,7 +160,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 
-		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
 			// the EC2KeyPair resource will not be able to track the created EC2KeyPair and
@@ -176,7 +174,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-				KeyName: aws.String(awsKeyName),
+				KeyName: aws.String(instance.Spec.EC2KeyPairName),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
@@ -210,6 +208,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 			return reconcile.Result{}, err
 		}
+
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 		// logic to generate kubernetes secret based off ec2keypair here
@@ -265,10 +264,13 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		// TODO(user): Change this for the object type created by your controller
 		// Update the found object and write the result back if there are any changes
 		// must delete
+		print("attempting to delete")
+		print(" this is the key name: ", instance.Spec.EC2KeyPairName)
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
-			KeyName: aws.String(awsKeyName),
+			KeyName: aws.String(instance.Spec.EC2KeyPairName),
 		})
 		if err != nil {
+			print("the delete didn't work")
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2KeyPair: %s", err.Error())
 
 			// Print the error, cast err to awserr.Error to get the Code and
@@ -292,6 +294,9 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2KeyPair and removed finalizers")
+
+		// insert secret deletion stuff here
+
 	}
 
 	return reconcile.Result{}, nil
