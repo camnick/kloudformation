@@ -102,7 +102,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		if errors.IsNotFound(err) {
 			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
