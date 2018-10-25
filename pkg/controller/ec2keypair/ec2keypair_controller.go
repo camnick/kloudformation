@@ -149,7 +149,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				Namespace: instance.Namespace,
 				Annotations: map[string]string{
 					"createdBy":  instance.Name,
-					"anotherKey": "another value",
 				},
 				//Finalizers: []string{`kubernetes`},
 			},
@@ -222,7 +221,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		//log creation
-		r.events.Event(keySecret, `Normal`, `Annotated`, "Added annotations")
+		r.events.Event(keySecret, `Normal`, `Created`, "Kubernetes secret created")
 		//add finalizer to keySecret
 		//println("going to try to append finalizers")
 		// next line breaks stuff

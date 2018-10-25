@@ -103,10 +103,12 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VolumeName, Namespace: instance.Namespace}, volume)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Volume")
+			return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(volume.ObjectMeta.Annotations[`volumeId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Volume has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
 	}
 
@@ -114,10 +116,12 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance")
+			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Instance has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
 	}
 

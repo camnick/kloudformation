@@ -101,10 +101,12 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 	}
 
@@ -112,10 +114,12 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.InternetGatewayName, Namespace: instance.Namespace}, internetGateway)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
+			return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "InternetGateway has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 	}
 

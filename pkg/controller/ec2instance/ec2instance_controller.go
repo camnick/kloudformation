@@ -98,48 +98,46 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	ec2KeyPair := &eccv1alpha1.EC2KeyPair{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2KeyPair, Namespace: instance.Namespace}, ec2KeyPair)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Normal`, `blahblahblah`, "Can't find KeyPair")
-			return reconcile.Result{}, nil
-		}
-		return reconcile.Result{}, err
-	} else if len(ec2KeyPair.ObjectMeta.Annotations[`awsKeyName`]) <= 0 {
-		r.events.Eventf(instance, `Normal`, `blahblahblah`, "EC2KeyPair annotation is 0 len")
-		return reconcile.Result{}, fmt.Errorf(`EC2KeyPair not ready`)
-	}
-	println("keypair ok")
-
 	// check for the subnet that the instance will be launched into and grab the subnetid
 	subnet := &eccv1alpha1.Subnet{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Normal`, `blahblahblah`, "Can't find Subnet")
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
+			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
-		r.events.Eventf(instance, `Normal`, `blahblahblah`, "SubnetId annotation is 0 len")
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 	}
-	println("subnet ok")
 
 	ec2SecurityGroup := &eccv1alpha1.EC2SecurityGroup{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Normal`, `blahblahblah`, "Can't find EC2SecurityGroup")
-			return reconcile.Result{}, nil
+			println(err)
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup")
+			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
-		r.events.Eventf(instance, `Normal`, `blahblahblah`, "EC2SecurityGroup annotation is 0 len")
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
 	}
-	println("ec2securitygroup ok")
+
+	ec2KeyPair := &eccv1alpha1.EC2KeyPair{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2KeyPair, Namespace: instance.Namespace}, ec2KeyPair)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find KeyPair")
+			return reconcile.Result{}, fmt.Errorf(`EC2KeyPair not ready`)
+		}
+		return reconcile.Result{}, err
+	} else if len(ec2KeyPair.ObjectMeta.Annotations[`awsKeyName`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Keypair has no AWS Key Name to lookup")
+		return reconcile.Result{}, fmt.Errorf(`EC2KeyPair not ready`)
+	}
 
 	svc := ec2.New(r.sess)
 	// get the EC2InstanceId out of the annotations

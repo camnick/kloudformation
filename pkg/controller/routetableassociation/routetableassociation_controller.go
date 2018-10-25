@@ -101,10 +101,12 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
+			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 	}
 	// check if route table is ready and confirm id is good
@@ -112,10 +114,12 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
+			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 

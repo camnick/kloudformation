@@ -103,11 +103,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	//print(instance.Spec.RouteTableName, " Is the name of the route table in question. ")
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
@@ -118,11 +119,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		//print(" Something went wrong with pulling the relevant InternetGateway info.")
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
+			return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "InternetGateway has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 	}
 

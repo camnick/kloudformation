@@ -102,10 +102,12 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup")
+			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
 		return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
 	}
 
@@ -129,7 +131,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		if authorizeOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`AuthorizeOutput was nil`)
 		}
-
+		println("printing ingressAuthorized", ingressAuthorized)
 		ingressAuthorized = "yes"
 		println(authorizeOutput)
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS AuthorizeEC2SecurityGroupIngress for EC2SecurityGroup (%s)", ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`])
