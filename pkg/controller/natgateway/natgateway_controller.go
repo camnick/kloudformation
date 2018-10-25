@@ -142,31 +142,17 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 	// if absent then create
 	natGatewayId, ok := instance.ObjectMeta.Annotations[`natGatewayId`]
 	if !ok {
-		println("going to attempt to greate the nat gateway")
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS NATGateway in %s", *r.sess.Config.Region)
 
-		/*// first check that the VPC has an InternetGateway.
-		println("looking for the attachedInternetGateway id")
-		println(vpc.ObjectMeta.Annotations[`attachedInternetGatewayId`])
-		internetGatewayId, ok := vpc.ObjectMeta.Annotations[`attachedInternetGatewayId`]
-		if !ok {
-			println("no attached internetGateway detected")
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: VPC %s has no InternetGateway", vpc.ObjectMeta.Annotations[`vpcid`])
-			return reconcile.Result{}, fmt.Errorf(`VPC has no InternetGateway`)
-		}
-		println("The internetGatewayId is: ", internetGatewayId)
-		*/
 		createOutput, err := svc.CreateNatGateway(&ec2.CreateNatGatewayInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
 			SubnetId:     aws.String(subnet.ObjectMeta.Annotations[`subnetid`]),
 		})
 		if err != nil {
-			println("create failed")
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		if createOutput == nil {
-			println("create output was empty")
 			return reconcile.Result{}, fmt.Errorf(`CreateNatGatewayOutput was nil`)
 		}
 
@@ -174,7 +160,6 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS NATGateway (%s)", natGatewayId)
 		instance.ObjectMeta.Annotations[`natGatewayId`] = natGatewayId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `natgateways.ecc.aws.gotopple.com`)
-		println("finalizers were added, all done.")
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then

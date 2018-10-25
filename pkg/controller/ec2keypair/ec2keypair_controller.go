@@ -148,7 +148,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				Name:      instance.Name + "-private-key",
 				Namespace: instance.Namespace,
 				Annotations: map[string]string{
-					"createdBy":  instance.Name,
+					"createdBy": instance.Name,
 				},
 				//Finalizers: []string{`kubernetes`},
 			},
@@ -223,7 +223,6 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		//log creation
 		r.events.Event(keySecret, `Normal`, `Created`, "Kubernetes secret created")
 		//add finalizer to keySecret
-		//println("going to try to append finalizers")
 		// next line breaks stuff
 		//keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `kubernetes`)
 		//update keySecret
@@ -260,10 +259,8 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Delete(context.TODO(), keySecret)
 		if err != nil {
 			//placeholder for real logging
-			println(" your secret deletion failed")
 		} else {
 			//placeholder for real logging
-			println("your deletion worked?!?!")
 		}
 		// TODO(user): Change this for the object type created by your controller
 		// Update the found object and write the result back if there are any changes

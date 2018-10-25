@@ -89,12 +89,10 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			print("YOUR OBJECT WASNT FOUND")
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
-		print("SOMETHING ELSE WENT WRONG READING THE OBJECT")
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
@@ -149,15 +147,11 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 
 		// Will appear to be 'attaching' later on can have this update to 'attached'
 		instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`] = ec2VolumeAttachmentResponse
-		print(" attachment response is: ")
-		print(instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`])
 
 		// Label both involved resources with each other's IDs. For now. This only works w/ one volume per EC2Instance
 		ec2Instance.ObjectMeta.Annotations[`attachedVolumes`] = volume.ObjectMeta.Annotations[`volumeId`]
-		print(" should have annotated the ec2 instance: ", ec2Instance.ObjectMeta.Annotations[`attachedVolumes`])
 
 		volume.ObjectMeta.Annotations[`instanceAttachedTo`] = ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]
-		print(" should have annotated the volume: ", volume.ObjectMeta.Annotations[`instanceAttachedTo`])
 
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2volumeattachments.ecc.aws.gotopple.com`)
 

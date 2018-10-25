@@ -131,9 +131,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		if authorizeOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`AuthorizeOutput was nil`)
 		}
-		println("printing ingressAuthorized", ingressAuthorized)
 		ingressAuthorized = "yes"
-		println(authorizeOutput)
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS AuthorizeEC2SecurityGroupIngress for EC2SecurityGroup (%s)", ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`])
 		instance.ObjectMeta.Annotations[`ingressAuthorized`] = ingressAuthorized
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `authorizeec2securitygroupingresss.ecc.aws.gotopple.com`)
