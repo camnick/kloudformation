@@ -1,0 +1,13 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: Volume
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: volume-sample
+spec:
+  availabilityZone: us-west-2a
+  size: 8
+  volumeType: gp2
+  tags:
+    - key: Name
+      value: sample-volume

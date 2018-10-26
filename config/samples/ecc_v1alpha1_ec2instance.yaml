@@ -1,0 +1,17 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2Instance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: sample-ec2-instance
+spec:
+  imageId: ami-6cd6f714 #Amazon Linux
+  instanceType: t2.micro
+  subnetName: example-network-public-a
+  userData: '#!/usr/bin/env bash
+            touch /home/ec2-user/test.txt'
+  ec2KeyPair: ec2keypair-sample
+  ec2SecurityGroupName: ec2securitygroup-sample
+  tags:
+    - key: Name
+      value: "Test Instance"

@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	aws "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	awssession "github.com/aws/aws-sdk-go/aws/session"
 	ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
@@ -100,10 +101,12 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC not ready")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "vpcid annotation is 0 len")
 		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 	}
 
@@ -159,6 +162,18 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 					`Warning`,
 					`DeleteFailure`,
 					"Unable to delete the Subnet: %s", ierr.Error())
+
+				if aerr, ok := ierr.(awserr.Error); ok {
+					switch aerr.Code() {
+					default:
+						fmt.Println(aerr.Error())
+					}
+				} else {
+					// Print the error, cast err to awserr.Error to get the Code and
+					// Message from an error.
+					fmt.Println(ierr.Error())
+				}
+
 			} else if deleteOutput == nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
@@ -207,15 +222,25 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 
 		// must delete
-		deleteOutput, err := svc.DeleteSubnet(&ec2.DeleteSubnetInput{
+		_, err = svc.DeleteSubnet(&ec2.DeleteSubnetInput{
 			SubnetId: aws.String(subnetid),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Subnet: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		if deleteOutput == nil {
-			return reconcile.Result{}, fmt.Errorf(`DeleteSubnetOutput was nil`)
+
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case `InvalidSubnetID.NotFound`:
+					// we want to keep going
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The Subnet: %s was already deleted", err.Error())
+				default:
+					return reconcile.Result{}, err
+				}
+			} else {
+				return reconcile.Result{}, err
+			}
 		}
 
 		// after a successful delete update the resource with the removed finalizer

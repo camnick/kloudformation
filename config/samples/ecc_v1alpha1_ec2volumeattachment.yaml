@@ -1,0 +1,10 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2VolumeAttachment
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ec2volumeattachment-sample
+spec:
+  devicePath: /dev/xvdb
+  volumeName: volume-sample
+  ec2InstanceName: sample-ec2-instance

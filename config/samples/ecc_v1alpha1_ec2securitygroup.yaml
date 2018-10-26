@@ -1,0 +1,10 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2SecurityGroup
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ec2securitygroup-sample
+spec:
+  ec2SecurityGroupName: sample-securitygroup
+  vpcName: example-network
+  description: an aws ec2 security group

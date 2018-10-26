@@ -7,7 +7,209 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
+  - authorizeec2securitygroupingresss
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - ec2instances
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - ec2keypairs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - ec2securitygroups
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - ec2volumeattachments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - eips
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - eipassociations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - internetgateways
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - internetgatewayattachments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - natgateways
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - routes
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - routetables
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - routetableassociations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
   - subnets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - test.aws.gotopple.com
+  resources:
+  - tests
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - volumes
   verbs:
   - get
   - list

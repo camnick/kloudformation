@@ -1,0 +1,13 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: RouteTable
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: routetable-sample
+spec:
+  vpcName: example-network
+  tags:
+    - key: sample-key
+      value: sample-value
+    - key: Name
+      value: SampleRouteTable

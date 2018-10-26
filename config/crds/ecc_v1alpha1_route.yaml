@@ -1,0 +1,44 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: routes.ecc.aws.gotopple.com
+spec:
+  group: ecc.aws.gotopple.com
+  names:
+    kind: Route
+    plural: routes
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            destinationCidrBlock:
+              type: string
+            gatewayName:
+              type: string
+            routeTableName:
+              type: string
+          required:
+          - destinationCidrBlock
+          - gatewayName
+          - routeTableName
+          type: object
+        status:
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
