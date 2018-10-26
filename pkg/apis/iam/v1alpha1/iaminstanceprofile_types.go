@@ -25,8 +25,8 @@ import (
 
 // IAMInstanceProfileSpec defines the desired state of IAMInstanceProfile
 type IAMInstanceProfileSpec struct {
-	InstanceProfileName		string	`json:"instanceProfileName"`
-	Path									string	`json:"path"`
+	InstanceProfileName string `json:"instanceProfileName"`
+	Path                string `json:"path"`
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
