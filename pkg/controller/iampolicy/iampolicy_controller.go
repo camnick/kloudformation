@@ -82,7 +82,7 @@ type ReconcileIAMPolicy struct {
 // Reconcile reads that state of the cluster for a IAMPolicy object and makes changes based on the state read
 // and what is in the IAMPolicy.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=policies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=iampolicies,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the IAMPolicy instance
 	instance := &iamv1alpha1.IAMPolicy{}
@@ -123,7 +123,7 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMPolicy (%s)", iamPolicyId)
 		instance.ObjectMeta.Annotations[`iamPolicyId`] = iamPolicyId
 		instance.ObjectMeta.Annotations[`iamPolicyArn`] = iamPolicyArn
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `policies.ecc.aws.gotopple.com`)
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iampolicies.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -179,7 +179,7 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `policies.ecc.aws.gotopple.com` {
+			if f == `iampolicies.ecc.aws.gotopple.com` {
 				instance.ObjectMeta.Finalizers = append(
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)
