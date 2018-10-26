@@ -25,8 +25,12 @@ import (
 
 // RoleSpec defines the desired state of Role
 type RoleSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	AssumeRolePolicyDocument string `json:"assumeRolePolicyDocument"`
+	Description              string `json:"description"`
+	MaxSessionDuration       int64  `json:"maxSessionDuration"`
+	Path                     string `json:"path"`
+	//PermissionsBoundary					string				`json:"permissionsBounday"`
+	RoleName string `json:"roleName"`
 }
 
 // RoleStatus defines the observed state of Role

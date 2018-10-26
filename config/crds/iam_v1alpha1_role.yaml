@@ -21,6 +21,24 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            assumeRolePolicyDocument:
+              type: string
+            description:
+              type: string
+            maxSessionDuration:
+              format: int64
+              type: integer
+            path:
+              type: string
+            roleName:
+              type: string
+          required:
+          - assumeRolePolicyDocument
+          - description
+          - maxSessionDuration
+          - path
+          - roleName
           type: object
         status:
           type: object
