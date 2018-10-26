@@ -24,10 +24,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	awssession "github.com/aws/aws-sdk-go/aws/session"
 	iam "github.com/aws/aws-sdk-go/service/iam"
-	iamv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
+	iamv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/iam/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	//"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -105,11 +105,11 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Role in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRole(&iam.CreateRoleInput{
-			AssumeRolePolicyDocument:		aws.String(instance.Spec.AssumeRolePolicyDocument),
-			Description:								aws.String(instance.Spec.Description),
-			MaxSessionDuration:					aws.Int64(instance.Spec.MaxSessionDuration),
-			Path:												aws.String(instance.Spec.Path),
-			RoleName:										aws.String(instance.RoleName),
+			AssumeRolePolicyDocument: aws.String(instance.Spec.AssumeRolePolicyDocument),
+			Description:              aws.String(instance.Spec.Description),
+			//MaxSessionDuration:       aws.Int64(instance.Spec.MaxSessionDuration),
+			Path:                     aws.String(instance.Spec.Path),
+			RoleName:                 aws.String(instance.Spec.RoleName),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
@@ -120,7 +120,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		}
 
 		roleId = *createOutput.Role.RoleId
-		roleArn = *createOutput.Role.Arn
+		roleArn := *createOutput.Role.Arn
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Role (%s)", roleId)
 		instance.ObjectMeta.Annotations[`roleId`] = roleId
 		instance.ObjectMeta.Annotations[`roleArn`] = roleArn
