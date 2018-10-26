@@ -23,8 +23,8 @@ import (
 	aws "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	awssession "github.com/aws/aws-sdk-go/aws/session"
-	ec2 "github.com/aws/aws-sdk-go/service/ec2"
-	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
+	iam "github.com/aws/aws-sdk-go/service/iam"
+	iamv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -61,7 +61,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to Role
-	err = c.Watch(&source.Kind{Type: &eccv1alpha1.Role{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &iamv1alpha1.Role{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ type ReconcileRole struct {
 // +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=roles,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the Role instance
-	instance := &eccv1alpha1.Role{}
+	instance := &iamv1alpha1.Role{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -97,32 +97,19 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		return reconcile.Result{}, err
 	}
 
-	vpc := &eccv1alpha1.VPC{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC not ready")
-			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "vpcid annotation is 0 len")
-		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-	}
+	svc := iam.New(r.sess)
 
-	svc := ec2.New(r.sess)
 	// get the RoleId out of the annotations
 	// if absent then create
 	roleId, ok := instance.ObjectMeta.Annotations[`roleId`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Role in %s", *r.sess.Config.Region)
-		createOutput, err := svc.CreateRole(&ec2.CreateRoleInput{
-			//			AssignIpv6AddressOnCreation: aws.Bool(instance.Spec.AssignIpv6AddressOnCreation),
-			//			MapPublicIpOnLaunch:         aws.Bool(instance.Spec.MapPublicIpOnLaunch),
-			AvailabilityZone: aws.String(instance.Spec.AvailabilityZone),
-			CidrBlock:        aws.String(instance.Spec.CIDRBlock),
-			//Ipv6CidrBlock:    aws.String(instance.Spec.IPv6CIDRBlock),
-			VpcId: aws.String(vpc.ObjectMeta.Annotations[`vpcid`]),
+		createOutput, err := svc.CreateRole(&iam.CreateRoleInput{
+			AssumeRolePolicyDocument:		aws.String(instance.Spec.AssumeRolePolicyDocument),
+			Description:								aws.String(instance.Spec.Description),
+			MaxSessionDuration:					aws.Int64(instance.Spec.MaxSessionDuration),
+			Path:												aws.String(instance.Spec.Path),
+			RoleName:										aws.String(instance.RoleName),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
@@ -133,8 +120,10 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		}
 
 		roleId = *createOutput.Role.RoleId
+		roleArn = *createOutput.Role.Arn
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Role (%s)", roleId)
 		instance.ObjectMeta.Annotations[`roleId`] = roleId
+		instance.ObjectMeta.Annotations[`roleArn`] = roleArn
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `roles.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
@@ -151,8 +140,8 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 				`ResourceUpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
-			deleteOutput, ierr := svc.DeleteRole(&ec2.DeleteRoleInput{
-				RoleId: aws.String(roleId),
+			deleteOutput, ierr := svc.DeleteRole(&iam.DeleteRoleInput{
+				RoleName: aws.String(instance.Spec.RoleName),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
@@ -188,29 +177,6 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		}
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
-		// Make sure that there are tags to add before attempting to add them.
-		if len(instance.Spec.Tags) >= 1 {
-			// Tag the new Role
-			ts := []*ec2.Tag{}
-			for _, t := range instance.Spec.Tags {
-				ts = append(ts, &ec2.Tag{
-					Key:   aws.String(t.Key),
-					Value: aws.String(t.Value),
-				})
-			}
-			tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
-				Resources: []*string{aws.String(roleId)},
-				Tags:      ts,
-			})
-			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
-				return reconcile.Result{}, err
-			}
-			if tagOutput == nil {
-				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
-			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
-		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
@@ -222,8 +188,8 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		}
 
 		// must delete
-		_, err = svc.DeleteRole(&ec2.DeleteRoleInput{
-			RoleId: aws.String(roleId),
+		_, err = svc.DeleteRole(&iam.DeleteRoleInput{
+			RoleName: aws.String(instance.Spec.RoleName),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Role: %s", err.Error())
