@@ -108,8 +108,8 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			AssumeRolePolicyDocument: aws.String(instance.Spec.AssumeRolePolicyDocument),
 			Description:              aws.String(instance.Spec.Description),
 			//MaxSessionDuration:       aws.Int64(instance.Spec.MaxSessionDuration),
-			Path:                     aws.String(instance.Spec.Path),
-			RoleName:                 aws.String(instance.Spec.RoleName),
+			Path:     aws.String(instance.Spec.Path),
+			RoleName: aws.String(instance.Spec.RoleName),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
@@ -155,12 +155,12 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 				if aerr, ok := ierr.(awserr.Error); ok {
 					switch aerr.Code() {
 					default:
-						fmt.Println(aerr.Error())
+						r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Delete failed: %s", aerr.Error())
 					}
 				} else {
 					// Print the error, cast err to awserr.Error to get the Code and
 					// Message from an error.
-					fmt.Println(ierr.Error())
+					r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Delete failed: %s", ierr.Error())
 				}
 
 			} else if deleteOutput == nil {
