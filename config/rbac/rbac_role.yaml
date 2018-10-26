@@ -135,6 +135,30 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - iam.aws.gotopple.com
+  resources:
+  - roles
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - ecc.aws.gotopple.com
   resources:
   - routes
