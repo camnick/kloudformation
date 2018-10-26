@@ -21,6 +21,20 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            description:
+              type: string
+            path:
+              type: string
+            policyDocument:
+              type: string
+            policyName:
+              type: string
+          required:
+          - description
+          - path
+          - policyDocument
+          - policyName
           type: object
         status:
           type: object

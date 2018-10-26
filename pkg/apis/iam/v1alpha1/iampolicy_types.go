@@ -25,6 +25,10 @@ import (
 
 // IAMPolicySpec defines the desired state of IAMPolicy
 type IAMPolicySpec struct {
+	Description    string `json:"description"`
+	Path           string `json:"path"`
+	PolicyDocument string `json:"policyDocument"`
+	PolicyName     string `json:"policyName"`
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
