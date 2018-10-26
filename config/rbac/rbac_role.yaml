@@ -99,21 +99,9 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - apps
+  - ecc.aws.gotopple.com
   resources:
-  - deployments
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - iam.aws.gotopple.com
-  resources:
-  - iampolicies
+  - policies
   verbs:
   - get
   - list

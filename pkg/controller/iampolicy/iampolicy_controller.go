@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package policy
+package iampolicy
 
 import (
 	"context"
@@ -37,7 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// Add creates a new Policy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new IAMPolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -48,20 +48,20 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	sess := awssession.Must(awssession.NewSessionWithOptions(awssession.Options{
 		SharedConfigState: awssession.SharedConfigEnable,
 	}))
-	r := mgr.GetRecorder(`policy-controller`)
-	return &ReconcilePolicy{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
+	r := mgr.GetRecorder(`iampolicy-controller`)
+	return &ReconcileIAMPolicy{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("policy-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("iampolicy-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to Policy
-	err = c.Watch(&source.Kind{Type: &iamv1alpha1.Policy{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to IAMPolicy
+	err = c.Watch(&source.Kind{Type: &iamv1alpha1.IAMPolicy{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -69,23 +69,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcilePolicy{}
+var _ reconcile.Reconciler = &ReconcileIAMPolicy{}
 
-// ReconcilePolicy reconciles a Policy object
-type ReconcilePolicy struct {
+// ReconcileIAMPolicy reconciles a IAMPolicy object
+type ReconcileIAMPolicy struct {
 	client.Client
 	scheme *runtime.Scheme
 	sess   *awssession.Session
 	events record.EventRecorder
 }
 
-// Reconcile reads that state of the cluster for a Policy object and makes changes based on the state read
-// and what is in the Policy.Spec
+// Reconcile reads that state of the cluster for a IAMPolicy object and makes changes based on the state read
+// and what is in the IAMPolicy.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=policies,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcilePolicy) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// Fetch the Policy instance
-	instance := &iamv1alpha1.Policy{}
+func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	// Fetch the IAMPolicy instance
+	instance := &iamv1alpha1.IAMPolicy{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -99,16 +99,16 @@ func (r *ReconcilePolicy) Reconcile(request reconcile.Request) (reconcile.Result
 
 	svc := iam.New(r.sess)
 
-	// get the PolicyId out of the annotations
+	// get the IAMPolicyId out of the annotations
 	// if absent then create
-	policyId, ok := instance.ObjectMeta.Annotations[`policyId`]
+	iamPolicyId, ok := instance.ObjectMeta.Annotations[`iamPolicyId`]
 	if !ok {
-		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Policy in %s", *r.sess.Config.Region)
+		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS IAMPolicy in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreatePolicy(&iam.CreatePolicyInput{
-			PolicyDocument: 					aws.String(instance.Spec.PolicyDocument),
-			Description:              aws.String(instance.Spec.Description),
-			Path:     								aws.String(instance.Spec.Path),
-			PolicyName: 							aws.String(instance.Spec.PolicyName),
+			PolicyDocument: aws.String(instance.Spec.PolicyDocument),
+			Description:    aws.String(instance.Spec.Description),
+			Path:           aws.String(instance.Spec.Path),
+			PolicyName:     aws.String(instance.Spec.PolicyName),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
@@ -118,20 +118,20 @@ func (r *ReconcilePolicy) Reconcile(request reconcile.Request) (reconcile.Result
 			return reconcile.Result{}, fmt.Errorf(`CreatePolicyOutput was nil`)
 		}
 
-		policyId = *createOutput.Policy.PolicyId
-		policyArn := *createOutput.Policy.Arn
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Policy (%s)", policyId)
-		instance.ObjectMeta.Annotations[`policyId`] = policyId
-		instance.ObjectMeta.Annotations[`policyArn`] = policyArn
+		iamPolicyId = *createOutput.Policy.PolicyId
+		iamPolicyArn := *createOutput.Policy.Arn
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMPolicy (%s)", iamPolicyId)
+		instance.ObjectMeta.Annotations[`iamPolicyId`] = iamPolicyId
+		instance.ObjectMeta.Annotations[`iamPolicyArn`] = iamPolicyArn
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `policies.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
-			// the Policy resource will not be able to track the created Policy and
+			// the IAMPolicy resource will not be able to track the created IAMPolicy and
 			// no finalizer will have been appended.
 			//
-			// This routine should attempt to delete the AWS Policy before
+			// This routine should attempt to delete the AWS IAMPolicy before
 			// returning the error and retrying.
 
 			r.events.Eventf(instance,
@@ -140,13 +140,13 @@ func (r *ReconcilePolicy) Reconcile(request reconcile.Request) (reconcile.Result
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeletePolicy(&iam.DeletePolicyInput{
-				PolicyName: aws.String(instance.Spec.PolicyName),
+				PolicyArn: aws.String(instance.ObjectMeta.Annotations[`iamPolicyArn`]),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupPolicyId`: policyId},
+					map[string]string{`cleanupPolicyId`: iamPolicyId},
 					`Warning`,
 					`DeleteFailure`,
 					"Unable to delete the Policy: %s", ierr.Error())
@@ -166,10 +166,10 @@ func (r *ReconcilePolicy) Reconcile(request reconcile.Request) (reconcile.Result
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupPolicyId`: policyId},
+					map[string]string{`cleanupPolicyId`: iamPolicyId},
 					`Warning`,
 					`DeleteAmbiguity`,
-					"Attempt to delete the Policy recieved a nil response")
+					"Attempt to delete the IAMPolicy recieved a nil response")
 				return reconcile.Result{}, fmt.Errorf(`DeletePolicyOutput was nil`)
 			}
 			return reconcile.Result{}, err
@@ -188,7 +188,7 @@ func (r *ReconcilePolicy) Reconcile(request reconcile.Request) (reconcile.Result
 
 		// must delete
 		_, err = svc.DeletePolicy(&iam.DeletePolicyInput{
-			PolicyName: aws.String(instance.Spec.PolicyName),
+			PolicyArn: aws.String(instance.ObjectMeta.Annotations[`iamPolicyArn`]),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Policy: %s", err.Error())
@@ -214,7 +214,7 @@ func (r *ReconcilePolicy) Reconcile(request reconcile.Request) (reconcile.Result
 			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Policy and removed finalizers")
+		r.events.Event(instance, `Normal`, `Deleted`, "Deleted IAMPolicy and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil
