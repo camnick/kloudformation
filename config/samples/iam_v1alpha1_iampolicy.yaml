@@ -1,0 +1,20 @@
+apiVersion: iam.aws.gotopple.com/v1alpha1
+kind: IAMPolicy
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: iampolicy-sample
+spec:
+  description: "A happy little description"
+  path: "/"
+  policyDocument: '{
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Action" : "ec2:DescribeInstances",
+        "Resource" : "*"
+      }
+    ]
+  }'
+  policyName: "EC2AccessToMetaData"

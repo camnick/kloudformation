@@ -113,6 +113,18 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
+  - policies
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
   - internetgateways
   verbs:
   - get
@@ -138,6 +150,18 @@ rules:
   - ecc.aws.gotopple.com
   resources:
   - natgateways
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - roles
   verbs:
   - get
   - list
