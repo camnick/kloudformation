@@ -1,0 +1,21 @@
+apiVersion: iam.aws.gotopple.com/v1alpha1
+kind: Role
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: role-sample
+spec:
+  assumeRolePolicyDocument: '{
+    "Version" : "2012-10-17",
+    "Statement" : [ {
+      "Effect" : "Allow",
+      "Principal" : {
+        "Service" : [ "ec2.amazonaws.com" ]
+      },
+      "Action" : [ "sts:AssumeRole" ]
+    } ]
+  }'
+  description: "This is a test role for Kloudformation"
+  maxSessionDuration: 3600
+  path: /testRoles/
+  roleName: TestRoleName
