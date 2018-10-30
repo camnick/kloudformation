@@ -101,7 +101,19 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
-  - policies
+  - iaminstanceprofiles
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - iampolicies
   verbs:
   - get
   - list
