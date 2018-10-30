@@ -113,7 +113,7 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
-  - policies
+  - iampolicies
   verbs:
   - get
   - list
