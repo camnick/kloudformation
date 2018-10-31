@@ -239,3 +239,86 @@ spec:
     - key: Name
       value: my-super-vpc2
 ---
+apiVersion: iam.aws.gotopple.com/v1alpha1
+kind: AddRoleToInstanceProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: addroletoinstanceprofile-sample
+spec:
+  iamInstanceProfileName: iaminstanceprofile-sample
+  iamRoleName: role-sample
+---
+apiVersion: iam.aws.gotopple.com/v1alpha1
+kind: IAMAttachRolePolicy
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: iamattachrolepolicy-sample
+spec:
+  iamPolicyName: iampolicy-sample
+  iamRoleName: role-sample
+---
+apiVersion: iam.aws.gotopple.com/v1alpha1
+kind: IAMInstanceProfile
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: iaminstanceprofile-sample
+spec:
+  instanceProfileName: "sample-instanceprofile"
+  path: "/"
+---
+apiVersion: iam.aws.gotopple.com/v1alpha1
+kind: IAMPolicy
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: iampolicy-sample
+spec:
+  description: "A happy little description"
+  path: "/"
+  policyDocument: '{
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Action" : "ec2:DescribeInstances",
+        "Resource" : "*"
+      }
+    ]
+  }'
+  policyName: "EC2AccessToMetaData"
+---
+apiVersion: iam.aws.gotopple.com/v1alpha1
+kind: Role
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: role-sample
+spec:
+  assumeRolePolicyDocument: '{
+    "Version" : "2012-10-17",
+    "Statement" : [ {
+      "Effect" : "Allow",
+      "Principal" : {
+        "Service" : [ "ec2.amazonaws.com" ]
+      },
+      "Action" : [ "sts:AssumeRole" ]
+    } ]
+  }'
+  description: "This is a test role for Kloudformation"
+  maxSessionDuration: 3600
+  path: /testRoles/
+  roleName: TestRoleName
+---
+apiVersion: test.aws.gotopple.com/v1alpha1
+kind: Test
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: test-sample
+spec:
+  # Add fields here
+  foo: bar
+---

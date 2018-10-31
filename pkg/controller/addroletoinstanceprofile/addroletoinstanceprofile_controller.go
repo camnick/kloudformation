@@ -115,7 +115,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMInstanceProfile not found")
-			return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
+			return reconcile.Result{}, fmt.Errorf(`IAMInstanceProfile not ready`)
 		}
 		return reconcile.Result{}, err
 	} else if len(instanceProfile.ObjectMeta.Annotations[`iamInstanceProfileArn`]) <= 0 {
