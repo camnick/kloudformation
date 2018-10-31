@@ -5,5 +5,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: dockerswarm-sample
 spec:
-  # Add fields here
-  foo: bar
+  numManagers: 3
+  numWorkers: 5
+  managerSize: t2.micro
+  workerSize: t2.micro
