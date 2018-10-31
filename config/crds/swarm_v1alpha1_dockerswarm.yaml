@@ -21,6 +21,25 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            managerSize:
+              type: string
+            numManagers:
+              format: int64
+              type: integer
+            numWorkers:
+              format: int64
+              type: integer
+            swarmName:
+              type: string
+            workerSize:
+              type: string
+          required:
+          - swarmName
+          - numManagers
+          - numWorkers
+          - managerSize
+          - workerSize
           type: object
         status:
           type: object
