@@ -118,9 +118,11 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 
 		iamInstanceProfileId = *createOutput.InstanceProfile.InstanceProfileId
 		iamInstanceProfileArn := *createOutput.InstanceProfile.Arn
+		iamInstanceProfileName := *CreateOutput.InstanceProfile.InstanceProfileName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMInstanceProfile (%s)", iamInstanceProfileId)
 		instance.ObjectMeta.Annotations[`iamInstanceProfileId`] = iamInstanceProfileId
 		instance.ObjectMeta.Annotations[`iamInstanceProfileArn`] = iamInstanceProfileArn
+		instance.ObjectMeta.Annotations[`awsInstanceProfileName`] = iamInstanceProfileName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iaminstanceprofiles.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
