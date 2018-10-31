@@ -5,6 +5,18 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - iam.aws.gotopple.com
+  resources:
+  - addroletoinstanceprofiles
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - ecc.aws.gotopple.com
   resources:
   - authorizeec2securitygroupingresss
@@ -90,6 +102,18 @@ rules:
   - ecc.aws.gotopple.com
   resources:
   - eipassociations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - iam.aws.gotopple.com
+  resources:
+  - iamattachrolepolicies
   verbs:
   - get
   - list

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package iaminstanceprofile
+package iamattachrolepolicy
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 	iamv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/iam/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -37,7 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// Add creates a new IAMInstanceProfile Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new IAMAttachRolePolicy Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -48,20 +48,20 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	sess := awssession.Must(awssession.NewSessionWithOptions(awssession.Options{
 		SharedConfigState: awssession.SharedConfigEnable,
 	}))
-	r := mgr.GetRecorder(`iaminstanceprofile-controller`)
-	return &ReconcileIAMInstanceProfile{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
+	r := mgr.GetRecorder(`iamattachrolepolicy-controller`)
+	return &ReconcileIAMAttachRolePolicy{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("iaminstanceprofile-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("iamattachrolepolicy-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to IAMInstanceProfile
-	err = c.Watch(&source.Kind{Type: &iamv1alpha1.IAMInstanceProfile{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to IAMAttachRolePolicy
+	err = c.Watch(&source.Kind{Type: &iamv1alpha1.IAMAttachRolePolicy{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -69,23 +69,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileIAMInstanceProfile{}
+var _ reconcile.Reconciler = &ReconcileIAMAttachRolePolicy{}
 
-// ReconcileIAMInstanceProfile reconciles a IAMInstanceProfile object
-type ReconcileIAMInstanceProfile struct {
+// ReconcileIAMAttachRolePolicy reconciles a IAMAttachRolePolicy object
+type ReconcileIAMAttachRolePolicy struct {
 	client.Client
 	scheme *runtime.Scheme
 	sess   *awssession.Session
 	events record.EventRecorder
 }
 
-// Reconcile reads that state of the cluster for a IAMInstanceProfile object and makes changes based on the state read
-// and what is in the IAMInstanceProfile.Spec
+// Reconcile reads that state of the cluster for a IAMAttachRolePolicy object and makes changes based on the state read
+// and what is in the IAMAttachRolePolicy.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=iaminstanceprofiles,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// Fetch the IAMInstanceProfile instance
-	instance := &iamv1alpha1.IAMInstanceProfile{}
+// +kubebuilder:rbac:groups=iam.aws.gotopple.com,resources=iamattachrolepolicies,verbs=get;list;watch;create;update;patch;delete
+func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	// Fetch the IAMAttachRolePolicy instance
+	instance := &iamv1alpha1.IAMAttachRolePolicy{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -97,41 +97,63 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
+	role := &iamv1alpha1.Role{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found")
+			return reconcile.Result{}, fmt.Errorf(`Role not ready`)
+		}
+		return reconcile.Result{}, err
+	} else if len(role.ObjectMeta.Annotations[`roleId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
+		return reconcile.Result{}, fmt.Errorf(`Role not ready`)
+	}
+
+	policy := &iamv1alpha1.IAMPolicy{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamPolicyName, Namespace: instance.Namespace}, policy)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not found")
+			return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
+		}
+		return reconcile.Result{}, err
+	} else if len(policy.ObjectMeta.Annotations[`iamPolicyArn`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not ready")
+		return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
+	}
+
 	svc := iam.New(r.sess)
 
-	// get the IAMInstanceProfileId out of the annotations
+	// get the IAMAttachRolePolicyId out of the annotations
 	// if absent then create
-	iamInstanceProfileId, ok := instance.ObjectMeta.Annotations[`iamInstanceProfileId`]
+	iamRolePolicyAttached, ok := instance.ObjectMeta.Annotations[`iamRolePolicyAttached`]
 	if !ok {
-		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS IAMInstanceProfile in %s", *r.sess.Config.Region)
-		createOutput, err := svc.CreateInstanceProfile(&iam.CreateInstanceProfileInput{
-			Path:                aws.String(instance.Spec.Path),
-			InstanceProfileName: aws.String(instance.Spec.InstanceProfileName),
+		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS IAMAttachRolePolicy in %s", *r.sess.Config.Region)
+		createOutput, err := svc.AttachRolePolicy(&iam.AttachRolePolicyInput{
+			PolicyArn: aws.String(policy.ObjectMeta.Annotations[`iamPolicyArn`]),
+			RoleName:  aws.String(role.Spec.RoleName),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		if createOutput == nil {
-			return reconcile.Result{}, fmt.Errorf(`CreateInstanceProfileOutput was nil`)
+			return reconcile.Result{}, fmt.Errorf(`CreateAttachRolePolicyOutput was nil`)
 		}
 
-		iamInstanceProfileId = *createOutput.InstanceProfile.InstanceProfileId
-		iamInstanceProfileArn := *createOutput.InstanceProfile.Arn
-		iamInstanceProfileName := *createOutput.InstanceProfile.InstanceProfileName
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMInstanceProfile (%s)", iamInstanceProfileId)
-		instance.ObjectMeta.Annotations[`iamInstanceProfileId`] = iamInstanceProfileId
-		instance.ObjectMeta.Annotations[`iamInstanceProfileArn`] = iamInstanceProfileArn
-		instance.ObjectMeta.Annotations[`awsInstanceProfileName`] = iamInstanceProfileName
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iaminstanceprofiles.ecc.aws.gotopple.com`)
+		iamRolePolicyAttached = "yes"
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMAttachRolePolicy")
+		instance.ObjectMeta.Annotations[`iamRolePolicyAttached`] = iamRolePolicyAttached
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iamattachrolepolicies.iam.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
-			// the IAMInstanceProfile resource will not be able to track the created IAMInstanceProfile and
+			// the IAMAttachRolePolicy resource will not be able to track the created IAMAttachRolePolicy and
 			// no finalizer will have been appended.
 			//
-			// This routine should attempt to delete the AWS IAMInstanceProfile before
+			// This routine should attempt to delete the AWS IAMAttachRolePolicy before
 			// returning the error and retrying.
 
 			r.events.Eventf(instance,
@@ -139,17 +161,18 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 				`ResourceUpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
-			deleteOutput, ierr := svc.DeleteInstanceProfile(&iam.DeleteInstanceProfileInput{
-				InstanceProfileName: aws.String(instance.Spec.InstanceProfileName),
+			deleteOutput, ierr := svc.DetachRolePolicy(&iam.DetachRolePolicyInput{
+				PolicyArn: aws.String(policy.ObjectMeta.Annotations[`iamPolicyArn`]),
+				RoleName:  aws.String(role.Spec.RoleName),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupInstanceProfileId`: iamInstanceProfileId},
+					map[string]string{`cleanupAttachRolePolicy`: (policy.ObjectMeta.Annotations[`iamPolicyArn`] + " & " + role.Spec.RoleName)},
 					`Warning`,
 					`DeleteFailure`,
-					"Unable to delete the IAMInstanceProfile: %s", ierr.Error())
+					"Unable to delete the IAMAttachRolePolicy: %s", ierr.Error())
 
 				if aerr, ok := ierr.(awserr.Error); ok {
 					switch aerr.Code() {
@@ -166,11 +189,11 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupInstanceProfileId`: iamInstanceProfileId},
+					map[string]string{`cleanupAttachRolePolicy`: (policy.ObjectMeta.Annotations[`iamPolicyArn`] + " & " + role.Spec.RoleName)},
 					`Warning`,
 					`DeleteAmbiguity`,
-					"Attempt to delete the IAMInstanceProfile recieved a nil response")
-				return reconcile.Result{}, fmt.Errorf(`DeleteInstanceProfileOutput was nil`)
+					"Attempt to delete the IAMAttachRolePolicy recieved a nil response")
+				return reconcile.Result{}, fmt.Errorf(`DetachRolePolicyOutput was nil`)
 			}
 			return reconcile.Result{}, err
 		}
@@ -179,7 +202,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `iaminstanceprofiles.ecc.aws.gotopple.com` {
+			if f == `iamattachrolepolicies.iam.aws.gotopple.com` {
 				instance.ObjectMeta.Finalizers = append(
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)
@@ -187,11 +210,12 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 		}
 
 		// must delete
-		_, err = svc.DeleteInstanceProfile(&iam.DeleteInstanceProfileInput{
-			InstanceProfileName: aws.String(instance.Spec.InstanceProfileName),
+		_, err = svc.DetachRolePolicy(&iam.DetachRolePolicyInput{
+			PolicyArn: aws.String(policy.ObjectMeta.Annotations[`iamPolicyArn`]),
+			RoleName:  aws.String(role.Spec.RoleName),
 		})
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the IAMInstanceProfile: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the IAMAttachRolePolicy: %s", err.Error())
 
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
@@ -199,7 +223,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 				switch aerr.Code() {
 				case `InvalidInstanceProfileID.NotFound`:
 					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The IAMInstanceProfile: %s was already deleted", err.Error())
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The IAMAttachRolePolicy: %s was already deleted", err.Error())
 				default:
 					return reconcile.Result{}, err
 				}
@@ -214,7 +238,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted IAMInstanceProfile and removed finalizers")
+		r.events.Event(instance, `Normal`, `Deleted`, "Deleted IAMAttachRolePolicy and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

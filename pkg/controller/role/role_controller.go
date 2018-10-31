@@ -121,9 +121,11 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 
 		roleId = *createOutput.Role.RoleId
 		roleArn := *createOutput.Role.Arn
+		roleName := *createOutput.Role.RoleName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Role (%s)", roleId)
 		instance.ObjectMeta.Annotations[`roleId`] = roleId
 		instance.ObjectMeta.Annotations[`roleArn`] = roleArn
+		instance.ObjectMeta.Annotations[`awsRoleName`] = roleName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `roles.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
