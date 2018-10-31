@@ -25,6 +25,10 @@ import (
 
 // DockerSwarmSpec defines the desired state of DockerSwarm
 type DockerSwarmSpec struct {
+	NumManagers			int		`json:"numManagers"`
+	NumWorkers			int		`json:"numWorkers"`
+	ManagerSize			int		`json:"managerSize"`
+	WorkerSize			int		`json:"workerSize"`
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
