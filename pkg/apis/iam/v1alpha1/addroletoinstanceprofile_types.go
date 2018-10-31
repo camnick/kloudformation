@@ -25,8 +25,8 @@ import (
 
 // AddRoleToInstanceProfileSpec defines the desired state of AddRoleToInstanceProfile
 type AddRoleToInstanceProfileSpec struct {
-	IamInstanceProfileName		string		`json:"iamInstanceProfileName"`
-	IamRoleName								string		`json:"iamRoleName"`
+	IamInstanceProfileName string `json:"iamInstanceProfileName"`
+	IamRoleName            string `json:"iamRoleName"`
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }

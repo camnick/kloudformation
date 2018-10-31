@@ -48,14 +48,14 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	sess := awssession.Must(awssession.NewSessionWithOptions(awssession.Options{
 		SharedConfigState: awssession.SharedConfigEnable,
 	}))
-	r := mgr.GetRecorder(`iaminstanceprofile -controller`)
+	r := mgr.GetRecorder(`iaminstanceprofile-controller`)
 	return &ReconcileIAMInstanceProfile{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("iaminstanceprofile -controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("iaminstanceprofile-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 
 		iamInstanceProfileId = *createOutput.InstanceProfile.InstanceProfileId
 		iamInstanceProfileArn := *createOutput.InstanceProfile.Arn
-		iamInstanceProfileName := *CreateOutput.InstanceProfile.InstanceProfileName
+		iamInstanceProfileName := *createOutput.InstanceProfile.InstanceProfileName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMInstanceProfile (%s)", iamInstanceProfileId)
 		instance.ObjectMeta.Annotations[`iamInstanceProfileId`] = iamInstanceProfileId
 		instance.ObjectMeta.Annotations[`iamInstanceProfileArn`] = iamInstanceProfileArn
