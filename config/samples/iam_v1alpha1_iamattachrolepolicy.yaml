@@ -1,0 +1,9 @@
+apiVersion: iam.aws.gotopple.com/v1alpha1
+kind: IAMAttachRolePolicy
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: iamattachrolepolicy-sample
+spec:
+  iamPolicyName: iampolicy-sample
+  iamRoleName: role-sample

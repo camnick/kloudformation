@@ -99,6 +99,18 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - iam.aws.gotopple.com
+  resources:
+  - iamattachrolepolicies
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - ecc.aws.gotopple.com
   resources:
   - iaminstanceprofiles
