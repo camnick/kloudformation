@@ -5,5 +5,5 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: addroletoinstanceprofile-sample
 spec:
-  # Add fields here
-  foo: bar
+  iamInstanceProfileName: aminstanceprofile-sample
+  iamRoleName: role-sample
