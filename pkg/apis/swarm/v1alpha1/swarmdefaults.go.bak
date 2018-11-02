@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package swarmdefaults
 
 import (
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type swarmDefaults struct {
+type SwarmDefaults struct {
 	metav1.TypeMeta                       `json:",inline"`
 	metav1.ObjectMeta                     `json:"metadata,omitempty"`
 	eccv1alpha1.VPC                       `json:"VPC"`
@@ -37,7 +37,7 @@ type swarmDefaults struct {
 	eccv1alpha1.EC2SecurityGroup          `json:"ec2SecurityGroup"`
 	IngressRules                          []eccv1alpha1.AuthorizeEC2SecurityGroupIngress
 	eccv1alpha1.EC2KeyPair                `json:"ec2KeyPair"`
-	ManagerInfo                           
+	ManagerInfo
 	WorkerInfo
 	SwarmIamPolicies               []iamv1alpha1.IAMPolicy
 	SwarmRoles                     []iamv1alpha1.Role

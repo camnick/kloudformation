@@ -25,7 +25,6 @@ import (
 
 // DockerSwarmSpec defines the desired state of DockerSwarm
 type DockerSwarmSpec struct {
-	SwarmName   string `json:"swarmName"`
 	NumManagers int    `json:"numManagers"`
 	NumWorkers  int    `json:"numWorkers"`
 	ManagerSize string `json:"managerSize"`

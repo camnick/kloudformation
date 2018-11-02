@@ -30,12 +30,9 @@ spec:
             numWorkers:
               format: int64
               type: integer
-            swarmName:
-              type: string
             workerSize:
               type: string
           required:
-          - swarmName
           - numManagers
           - numWorkers
           - managerSize

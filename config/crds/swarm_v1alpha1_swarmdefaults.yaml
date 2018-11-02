@@ -14,8 +14,6 @@ spec:
   validation:
     openAPIV3Schema:
       properties:
-        ManagerInfoStruct:
-          type: object
         Subnet:
           properties:
             apiVersion:
@@ -272,7 +270,6 @@ spec:
       - routeTable
       - routeTableAssociation
       - route
-      - ManagerInfoStruct
   version: v1alpha1
 status:
   acceptedNames:
