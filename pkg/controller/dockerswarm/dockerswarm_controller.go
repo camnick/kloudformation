@@ -107,10 +107,10 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	// iamsvc will create iam resources.
 	ec2svc := ec2.New(r.sess)
 	//iamsvc := iam.New(r.sess)
-	// get the DockerSwarmId out of the annotations
+	// get the DockerSwarmUp out of the annotations
 	// if absent then create
-	dockerswarmid, ok := instance.ObjectMeta.Annotations[`dockerswarmid`]
 	r.events.Eventf(instance, `Normal`, `Info`, "Checking if Swarm Exists")
+	dockerswarmup, ok := instance.ObjectMeta.Annotations[`dockerswarmup`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `Info`, "Swarm doesn't exist- Creating")
 		//define the vpc object
@@ -141,9 +141,10 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		err = r.Get(context.TODO(), types.NamespacedName{Name: vpc.Name, Namespace: vpc.Namespace}, found)
 		if err != nil && errors.IsNotFound(err) {
 			r.events.Eventf(instance, `Normal`, `Info`, "Creating the Swarm's VPC")
-			err = r.Create(context.TODO(), vpc)
+			err = r.Update(context.TODO(), vpc)
 			if err != nil {
 				r.events.Eventf(instance, `Normal`, `Info`, "Swarm VPC creation failed")
+				//print(errors(err))
 				return reconcile.Result{}, err
 			}
 		} else if err != nil {
@@ -173,9 +174,9 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, fmt.Errorf(`CreateDockerSwarmOutput was nil`)
 		}
 
-		dockerswarmid = *createOutput.Subnet.SubnetId
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS DockerSwarm (%s)", dockerswarmid)
-		instance.ObjectMeta.Annotations[`dockerswarmid`] = dockerswarmid
+		dockerswarmup = "swarming"
+		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS DockerSwarm (%s)", dockerswarmup)
+		instance.ObjectMeta.Annotations[`dockerswarmup`] = dockerswarmup
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `dockerswarms.swarm.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
@@ -193,13 +194,13 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := ec2svc.DeleteSubnet(&ec2.DeleteSubnetInput{
-				//SubnetId: aws.String(dockerswarmid),
+				//SubnetId: aws.String(dockerswarmup),
 			})
 			if ierr != nil {
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupDockerSwarmId`: dockerswarmid},
+					map[string]string{`cleanupDockerSwarmId`: dockerswarmup},
 					`Warning`,
 					`DeleteFailure`,
 					"Unable to delete the DockerSwarm: %s", ierr.Error())
@@ -219,7 +220,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 				// Send an appropriate event that has been annotated
 				// for async AWS resource GC.
 				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupDockerSwarmId`: dockerswarmid},
+					map[string]string{`cleanupDockerSwarmId`: dockerswarmup},
 					`Warning`,
 					`DeleteAmbiguity`,
 					"Attempt to delete the DockerSwarm recieved a nil response")
@@ -242,7 +243,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 
 		// must delete
 		_, err = ec2svc.DeleteSubnet(&ec2.DeleteSubnetInput{
-			//SubnetId: aws.String(dockerswarmid),
+			//SubnetId: aws.String(dockerswarmup),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the DockerSwarm: %s", err.Error())
