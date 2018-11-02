@@ -29,9 +29,21 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - ecc.aws.gotopple.com
+  - apps
   resources:
   - dockerswarms
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - test.aws.gotopple.com
+  resources:
+  - tests
   verbs:
   - get
   - list

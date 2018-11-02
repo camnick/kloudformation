@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Jeff Nickoloff (jeff@allingeek.com).
+Copyright 2018 The KloudFormation authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,15 +18,16 @@ package dockerswarm
 
 import (
 	"context"
-	"fmt"
+	//"fmt"
+	"log"
+	"reflect"
 
-	//aws "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	awssession "github.com/aws/aws-sdk-go/aws/session"
-	ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
-	//iamv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/iam/v1alpha1"
 	swarmv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/swarm/v1alpha1"
+	//testv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/test/v1alpha1"
+	//iamv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/iam/v1alpha1"
+	//appsv1 "k8s.io/api/apps/v1"
+	//corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,19 +42,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+/**
+* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
+* business logic.  Delete these comments after modifying this file.*
+ */
+
 // Add creates a new DockerSwarm Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
+// USER ACTION REQUIRED: update cmd/manager/main.go to call this test.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	sess := awssession.Must(awssession.NewSessionWithOptions(awssession.Options{
-		SharedConfigState: awssession.SharedConfigEnable,
-	}))
 	r := mgr.GetRecorder(`dockerswarm-controller`)
-	return &ReconcileDockerSwarm{Client: mgr.GetClient(), scheme: mgr.GetScheme(), sess: sess, events: r}
+	return &ReconcileDockerSwarm{Client: mgr.GetClient(), scheme: mgr.GetScheme(), events: r}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -70,23 +74,35 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// TODO(user): Modify this to be the types you create
+	// Uncomment watch a Deployment created by DockerSwarm - change this for objects you create
+	err = c.Watch(&source.Kind{Type: &eccv1alpha1.VPC{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &eccv1alpha1.VPC{},
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 var _ reconcile.Reconciler = &ReconcileDockerSwarm{}
 
-// ReconcileSubnet reconciles a DockerSwarm object
+// ReconcileDockerSwarm reconciles a DockerSwarm object
 type ReconcileDockerSwarm struct {
 	client.Client
 	scheme *runtime.Scheme
-	sess   *awssession.Session
 	events record.EventRecorder
 }
 
 // Reconcile reads that state of the cluster for a DockerSwarm object and makes changes based on the state read
 // and what is in the DockerSwarm.Spec
+// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
+// a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=dockerswarms,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=dockerswarms,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=test.aws.gotopple.com,resources=tests,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the DockerSwarm instance
 	instance := &swarmv1alpha1.DockerSwarm{}
@@ -101,176 +117,56 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	// No parent resource lookups, all
-
-	// ec2svc will create ec2 resources.
-	// iamsvc will create iam resources.
-	ec2svc := ec2.New(r.sess)
-	//iamsvc := iam.New(r.sess)
-	// get the DockerSwarmUp out of the annotations
-	// if absent then create
-	r.events.Eventf(instance, `Normal`, `Info`, "Checking if Swarm Exists")
-	dockerswarmup, ok := instance.ObjectMeta.Annotations[`dockerswarmup`]
-	if !ok {
-		r.events.Eventf(instance, `Normal`, `Info`, "Swarm doesn't exist- Creating")
-		//define the vpc object
-		r.events.Eventf(instance, `Normal`, `Info`, "Defining the Swarm VPC")
-		vpc := &eccv1alpha1.VPC{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: instance.Name + "-vpc",
-			},
-			Spec: eccv1alpha1.VPCSpec{
-				CIDRBlock:          "10.20.0.0/16",
-				EnableDNSSupport:   true,
-				EnableDNSHostnames: true,
-				InstanceTenancy:    "default",
-				Tags: []eccv1alpha1.ResourceTag{
-					{
-						Key:   "Name",
-						Value: "SwarmVPC",
-					},
+	// TODO(user): Change this to be the object type created by your controller
+	// Define the desired Deployment object
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm VPC")
+	vpc := &eccv1alpha1.VPC{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: instance.Name + "-vpc",
+		},
+		Spec: eccv1alpha1.VPCSpec{
+			CIDRBlock:          "10.20.0.0/16",
+			EnableDNSSupport:   true,
+			EnableDNSHostnames: true,
+			InstanceTenancy:    "default",
+			Tags: []eccv1alpha1.ResourceTag{
+				{
+					Key:   "Name",
+					Value: "SwarmVPC",
 				},
 			},
-		}
-		if err := controllerutil.SetControllerReference(instance, vpc, r.scheme); err != nil {
-			return reconcile.Result{}, err
-		}
-
-		// Does the VPC already exist?
-		found := &eccv1alpha1.VPC{}
-		err = r.Get(context.TODO(), types.NamespacedName{Name: vpc.Name, Namespace: vpc.Namespace}, found)
-		if err != nil && errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Normal`, `Info`, "Creating the Swarm's VPC")
-			err = r.Update(context.TODO(), vpc)
-			if err != nil {
-				r.events.Eventf(instance, `Normal`, `Info`, "Swarm VPC creation failed")
-				//print(errors(err))
-				return reconcile.Result{}, err
-			}
-		} else if err != nil {
-			r.events.Eventf(instance, `Normal`, `Info`, "Checking for Swarm VPC failed")
-			return reconcile.Result{}, err
-		}
-		r.events.Eventf(instance, `Normal`, `Info`, "Swarm VPC creation worked")
-
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS DockerSwarm in %s", *r.sess.Config.Region)
-		createOutput, err := ec2svc.CreateSubnet(&ec2.CreateSubnetInput{
-			//			AssignIpv6AddressOnCreation: aws.Bool(instance.Spec.AssignIpv6AddressOnCreation),
-			//			MapPublicIpOnLaunch:         aws.Bool(instance.Spec.MapPublicIpOnLaunch),
-			//AvailabilityZone: aws.String(instance.Spec.AvailabilityZone),
-			//CidrBlock:        aws.String(instance.Spec.CIDRBlock),
-			//Ipv6CidrBlock:    aws.String(instance.Spec.IPv6CIDRBlock),
-			//VpcId: aws.String(vpc.ObjectMeta.Annotations[`vpcid`]),
-		})
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		if createOutput == nil {
-			return reconcile.Result{}, fmt.Errorf(`CreateDockerSwarmOutput was nil`)
-		}
-
-		dockerswarmup = "swarming"
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS DockerSwarm (%s)", dockerswarmup)
-		instance.ObjectMeta.Annotations[`dockerswarmup`] = dockerswarmup
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `dockerswarms.swarm.aws.gotopple.com`)
-
-		err = r.Update(context.TODO(), instance)
-		if err != nil {
-			// If the call to update the resource annotations has failed then
-			// the DockerSwarm resource will not be able to track the created DockerSwarm and
-			// no finalizer will have been appended.
-			//
-			// This routine should attempt to delete the AWS DockerSwarm before
-			// returning the error and retrying.
-
-			r.events.Eventf(instance,
-				`Warning`,
-				`ResourceUpdateFailure`,
-				"Failed to update the resource: %s", err.Error())
-
-			deleteOutput, ierr := ec2svc.DeleteSubnet(&ec2.DeleteSubnetInput{
-				//SubnetId: aws.String(dockerswarmup),
-			})
-			if ierr != nil {
-				// Send an appropriate event that has been annotated
-				// for async AWS resource GC.
-				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupDockerSwarmId`: dockerswarmup},
-					`Warning`,
-					`DeleteFailure`,
-					"Unable to delete the DockerSwarm: %s", ierr.Error())
-
-				if aerr, ok := ierr.(awserr.Error); ok {
-					switch aerr.Code() {
-					default:
-						fmt.Println(aerr.Error())
-					}
-				} else {
-					// Print the error, cast err to awserr.Error to get the Code and
-					// Message from an error.
-					fmt.Println(ierr.Error())
-				}
-
-			} else if deleteOutput == nil {
-				// Send an appropriate event that has been annotated
-				// for async AWS resource GC.
-				r.events.AnnotatedEventf(instance,
-					map[string]string{`cleanupDockerSwarmId`: dockerswarmup},
-					`Warning`,
-					`DeleteAmbiguity`,
-					"Attempt to delete the DockerSwarm recieved a nil response")
-				return reconcile.Result{}, fmt.Errorf(`DeleteDockerSwarmOutput was nil`)
-			}
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
-
-		// Make sure that there are tags to add before attempting to add them.
-	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `dockerswarms.swarm.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
-			}
-		}
-
-		// must delete
-		_, err = ec2svc.DeleteSubnet(&ec2.DeleteSubnetInput{
-			//SubnetId: aws.String(dockerswarmup),
-		})
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the DockerSwarm: %s", err.Error())
-
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case `InvalidDockerSwarmID.NotFound`:
-					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The Subnet: %s was already deleted", err.Error())
-				default:
-					return reconcile.Result{}, err
-				}
-			} else {
-				return reconcile.Result{}, err
-			}
-		}
-
-		// after a successful delete update the resource with the removed finalizer
-		err = r.Update(context.TODO(), instance)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted DockerSwarm and removed finalizers")
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, vpc, r.scheme); err != nil {
+		return reconcile.Result{}, err
 	}
 
+	// TODO(user): Change this for the object type created by your controller
+	// Check if the Deployment already exists
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm VPC exists")
+	found := &eccv1alpha1.VPC{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: vpc.Name, Namespace: vpc.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm VPC")
+		err = r.Create(context.TODO(), vpc)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm VPC")
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Assuming VPC exists?!?")
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(vpc.Spec, found.Spec) {
+		found.Spec = vpc.Spec
+		log.Printf("Updating Deployment %s/%s\n", vpc.Namespace, vpc.Name)
+		err = r.Update(context.TODO(), found)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
 	return reconcile.Result{}, nil
 }
