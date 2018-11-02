@@ -30,10 +30,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	//"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -113,7 +114,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `Info`, "Swarm doesn't exist- Creating")
 		//define the vpc object
-		r.events.Eventf(instance, `Normal`, `Info`, "Defining the VPC")
+		r.events.Eventf(instance, `Normal`, `Info`, "Defining the Swarm VPC")
 		vpc := &eccv1alpha1.VPC{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: instance.Name + "-vpc",
@@ -131,13 +132,29 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 				},
 			},
 		}
-		r.events.Eventf(instance, `Normal`, `Info`, "Creating the Swarm's VPC")
-		err = r.Create(context.TODO(), vpc)
-		if err != nil {
-			r.events.Eventf(instance, `Normal`, `Info`, "VPC creation failed")
+		if err := controllerutil.SetControllerReference(instance, vpc, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
-		r.events.Eventf(instance, `Normal`, `Info`, "VPC creation worked")
+
+		// Does the VPC already exist?
+		found := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: vpc.Name, Namespace: vpc.Namespace}, found)
+		if err != nil && errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Normal`, `Info`, "Creating the Swarm's VPC")
+			err = r.Create(context.TODO(), vpc)
+			if err != nil {
+				r.events.Eventf(instance, `Normal`, `Info`, "Swarm VPC creation failed")
+				return reconcile.Result{}, err
+			}
+		} else if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Checking for Swarm VPC failed")
+			return reconcile.Result{}, err
+		}
+		r.events.Eventf(instance, `Normal`, `Info`, "Swarm VPC creation worked")
+
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS DockerSwarm in %s", *r.sess.Config.Region)
 		createOutput, err := ec2svc.CreateSubnet(&ec2.CreateSubnetInput{
