@@ -19,7 +19,7 @@ package dockerswarm
 import (
 	"context"
 	//"fmt"
-	"log"
+	//"log"
 	"reflect"
 
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
@@ -49,7 +49,7 @@ import (
 
 // Add creates a new DockerSwarm Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this test.Add(mgr) to install this Controller
+// USER ACTION REQUIRED: update cmd/manager/main.go to call this dockerswarm.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
@@ -75,7 +75,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by DockerSwarm - change this for objects you create
+	// Uncomment watch a VPC created by DockerSwarm - change this for objects you create
 	err = c.Watch(&source.Kind{Type: &eccv1alpha1.VPC{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &eccv1alpha1.VPC{},
@@ -99,10 +99,9 @@ type ReconcileDockerSwarm struct {
 // Reconcile reads that state of the cluster for a DockerSwarm object and makes changes based on the state read
 // and what is in the DockerSwarm.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
-// Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=apps,resources=dockerswarms,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=test.aws.gotopple.com,resources=tests,verbs=get;list;watch;create;update;patch;delete
+// Automatically generate RBAC rules to allow the Controller to read and write VPCs
+// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=vpcs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=swarm.aws.gotopple.com,resources=dockerswarms,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the DockerSwarm instance
 	instance := &swarmv1alpha1.DockerSwarm{}
@@ -118,7 +117,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
+	// Define the desired VPC object
 	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm VPC")
 	vpc := &eccv1alpha1.VPC{
 		ObjectMeta: metav1.ObjectMeta{
@@ -142,7 +141,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
+	// Check if the VPC already exists
 	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm VPC exists")
 	found := &eccv1alpha1.VPC{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: vpc.Name, Namespace: vpc.Namespace}, found)
@@ -162,7 +161,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	// Update the found object and write the result back if there are any changes
 	if !reflect.DeepEqual(vpc.Spec, found.Spec) {
 		found.Spec = vpc.Spec
-		log.Printf("Updating Deployment %s/%s\n", vpc.Namespace, vpc.Name)
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm VPC")
 		err = r.Update(context.TODO(), found)
 		if err != nil {
 			return reconcile.Result{}, err

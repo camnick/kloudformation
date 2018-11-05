@@ -29,9 +29,9 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - apps
+  - ecc.aws.gotopple.com
   resources:
-  - dockerswarms
+  - vpcs
   verbs:
   - get
   - list
@@ -41,9 +41,9 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - test.aws.gotopple.com
+  - swarm.aws.gotopple.com
   resources:
-  - tests
+  - dockerswarms
   verbs:
   - get
   - list
