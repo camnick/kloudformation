@@ -102,6 +102,7 @@ type ReconcileDockerSwarm struct {
 // Automatically generate RBAC rules to allow the Controller to read and write VPCs
 // +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=vpcs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=swarm.aws.gotopple.com,resources=dockerswarms,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=subnets,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the DockerSwarm instance
 	instance := &swarmv1alpha1.DockerSwarm{}
@@ -143,11 +144,13 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	// TODO(user): Change this for the object type created by your controller
 	// Check if the VPC already exists
 	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm VPC exists")
-	found := &eccv1alpha1.VPC{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: vpc.Name, Namespace: vpc.Namespace}, found)
+	vpcFound := &eccv1alpha1.VPC{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: vpc.Name, Namespace: vpc.Namespace}, vpcFound)
+
 	if err != nil && errors.IsNotFound(err) {
 		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm VPC")
 		err = r.Create(context.TODO(), vpc)
+
 		if err != nil {
 			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm VPC")
 			return reconcile.Result{}, err
@@ -155,17 +158,69 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
+
 	r.events.Eventf(instance, `Normal`, `Info`, "Assuming VPC exists?!?")
 
 	// TODO(user): Change this for the object type created by your controller
 	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(vpc.Spec, found.Spec) {
-		found.Spec = vpc.Spec
+	if !reflect.DeepEqual(vpc.Spec, vpcFound.Spec) {
+		vpcFound.Spec = vpc.Spec
 		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm VPC")
-		err = r.Update(context.TODO(), found)
+		err = r.Update(context.TODO(), vpcFound)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 	}
+
+	/// subnet section
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Subnet")
+	subnet := &eccv1alpha1.Subnet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: instance.Name + "-subnet",
+		},
+		Spec: eccv1alpha1.SubnetSpec{
+			AvailabilityZone: "us-west-2a",
+			CIDRBlock:        "10.20.110.0/24",
+			VPCName:          instance.Name + "-vpc",
+			Tags: []eccv1alpha1.ResourceTag{
+				{
+					Key:   "Name",
+					Value: "SwarmSubnet",
+				},
+			},
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, subnet, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	// Check if the VPC already exists
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm Subnet exists")
+	subnetFound := &eccv1alpha1.Subnet{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: subnet.Name, Namespace: subnet.Namespace}, subnetFound)
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm Subnet")
+		err = r.Create(context.TODO(), subnet)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm Subnet")
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Assuming Subnet exists?!?")
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(subnet.Spec, subnetFound.Spec) {
+		subnetFound.Spec = subnet.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm Subnet")
+		err = r.Update(context.TODO(), subnetFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
 	return reconcile.Result{}, nil
 }

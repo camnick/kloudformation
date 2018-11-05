@@ -81,6 +81,7 @@ type ReconcileVPC struct {
 // and what is in the VPC.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=vpcs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=swarm.aws.gotopple.com,resources=dockerswarms,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the VPC instance
 	instance := &eccv1alpha1.VPC{}

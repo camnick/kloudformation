@@ -55,6 +55,18 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
+  - subnets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
   - ec2instances
   verbs:
   - get
@@ -306,6 +318,18 @@ rules:
   - ecc.aws.gotopple.com
   resources:
   - vpcs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - swarm.aws.gotopple.com
+  resources:
+  - dockerswarms
   verbs:
   - get
   - list
