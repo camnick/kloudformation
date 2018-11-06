@@ -678,6 +678,16 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			EC2SecurityGroupName: instance.Name + "-ec2securitygroup",
 			VPCName:              vpc.Name,
 			Description:          "A fun and exciting security group for the swarm",
+			Tags: []eccv1alpha1.ResourceTag{
+				{
+					Key:   "Name",
+					Value: "SwarmEC2SecurityGroup",
+				},
+				{
+					Key:   "SwarmOwner",
+					Value: instance.Name,
+				},
+			},
 		},
 	}
 	if err := controllerutil.SetControllerReference(instance, ec2SecurityGroup, r.scheme); err != nil {

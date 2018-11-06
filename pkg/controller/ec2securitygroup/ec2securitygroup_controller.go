@@ -185,6 +185,29 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 			return reconcile.Result{}, err
 		}
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		// Make sure that there are tags to add before attempting to add them.
+		if len(instance.Spec.Tags) >= 1 {
+			// Tag the new security group
+			ts := []*ec2.Tag{}
+			for _, t := range instance.Spec.Tags {
+				ts = append(ts, &ec2.Tag{
+					Key:   aws.String(t.Key),
+					Value: aws.String(t.Value),
+				})
+			}
+			tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
+				Resources: []*string{aws.String(ec2SecurityGroupId)},
+				Tags:      ts,
+			})
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				return reconcile.Result{}, err
+			}
+			if tagOutput == nil {
+				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
+			}
+			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+		}
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
