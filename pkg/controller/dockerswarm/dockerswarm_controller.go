@@ -396,6 +396,120 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 	/// END INTERNETGATEWAYATTACHMENT STUFF ///
+	/// NATEIP STUFF ////
+	// TODO(user): Change this to be the object type created by your controller
+	// Define the desired VPC object
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm SwarmNATGatewayEIP")
+	natGatewayEIP := &eccv1alpha1.EIP{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-natgateway-eip",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.EIPSpec{
+			VpcName: vpc.Name,
+			Tags: []eccv1alpha1.ResourceTag{
+				{
+					Key:   "Name",
+					Value: "SwarmNATGatewayEIP",
+				},
+				{
+					Key:   "SwarmOwner",
+					Value: instance.Name,
+				},
+			},
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, natGatewayEIP, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm NATGatewayEIP exists")
+	natGatewayEIPFound := &eccv1alpha1.EIP{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: natGatewayEIP.Name, Namespace: natGatewayEIP.Namespace}, natGatewayEIPFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm InternetGatewayAttachment")
+		err = r.Create(context.TODO(), natGatewayEIP)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm NATGatewayEIP %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm NATGatewayEIP is present")
+	err = r.Update(context.TODO(), natGatewayEIP)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(natGatewayEIP.Spec, natGatewayEIPFound.Spec) {
+		natGatewayEIPFound.Spec = natGatewayEIP.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm NATGatewayEIP")
+		err = r.Update(context.TODO(), natGatewayEIPFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END NATEIP STUFF ///
+
+	/// NATGATEWAYATTACHMENT STUFF ////
+	// TODO(user): Change this to be the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm NATGateway")
+
+	natGateway := &eccv1alpha1.NATGateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-natgateway",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.NATGatewaySpec{
+			SubnetName:        subnet.Name,
+			EIPAllocationName: natGatewayEIP.Name,
+			Tags: []eccv1alpha1.ResourceTag{
+				{
+					Key:   "Name",
+					Value: "SwarmNATGateway",
+				},
+				{
+					Key:   "SwarmOwner",
+					Value: instance.Name,
+				},
+			},
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, natGateway, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm NATGateway exists")
+	natGatewayFound := &eccv1alpha1.NATGateway{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: natGateway.Name, Namespace: natGateway.Namespace}, natGatewayFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm NATGateway")
+		err = r.Create(context.TODO(), natGateway)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm NATGateway %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm NATGateway is present")
+	err = r.Update(context.TODO(), natGateway)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(natGateway.Spec, natGatewayFound.Spec) {
+		natGatewayFound.Spec = natGateway.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm NATGateway")
+		err = r.Update(context.TODO(), natGatewayFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END NATGATEWAYATTACHMENT STUFF ///
 
 	return reconcile.Result{}, nil
 }
