@@ -509,7 +509,210 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 	}
-	/// END NATGATEWAYATTACHMENT STUFF ///
+	/// END NATGATEWAY STUFF ///
+
+	/// ROUTE TABLE STUFF ////
+	// TODO(user): Change this to be the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm RouteTable")
+
+	routeTable := &eccv1alpha1.RouteTable{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-routetable",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.RouteTableSpec{
+			VpcName: vpc.Name,
+			Tags: []eccv1alpha1.ResourceTag{
+				{
+					Key:   "Name",
+					Value: "SwarmRouteTable",
+				},
+				{
+					Key:   "SwarmOwner",
+					Value: instance.Name,
+				},
+			},
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, routeTable, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm RouteTable exists")
+	routeTableFound := &eccv1alpha1.RouteTable{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: routeTable.Name, Namespace: routeTable.Namespace}, routeTableFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm RouteTable")
+		err = r.Create(context.TODO(), routeTable)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm RouteTable %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm RouteTable is present")
+	err = r.Update(context.TODO(), routeTable)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(routeTable.Spec, routeTableFound.Spec) {
+		routeTableFound.Spec = routeTable.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm RouteTable")
+		err = r.Update(context.TODO(), routeTableFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END ROUTE TABLE STUFF ///
+
+	/// ROUTE STUFF ////
+	// TODO(user): Change this to be the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Route")
+
+	route := &eccv1alpha1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-route",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.RouteSpec{
+			DestinationCidrBlock: "0.0.0.0/0",
+			GatewayName:          internetGateway.Name,
+			RouteTableName:       routeTable.Name,
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, route, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm Route exists")
+	routeFound := &eccv1alpha1.Route{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: route.Name, Namespace: route.Namespace}, routeFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm RouteTable")
+		err = r.Create(context.TODO(), route)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm Route %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm Route is present")
+	err = r.Update(context.TODO(), route)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(route.Spec, routeFound.Spec) {
+		routeFound.Spec = route.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm Route")
+		err = r.Update(context.TODO(), routeFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END ROUTE STUFF ///
+
+	/// ROUTE TABLE ASSOCIATION STUFF ////
+	// TODO(user): Change this to be the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm RouteTableAssociation")
+
+	routeTableAssociation := &eccv1alpha1.RouteTableAssociation{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-routetableassociation",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.RouteTableAssociationSpec{
+			RouteTableName: routeTable.Name,
+			SubnetName:     subnet.Name,
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, routeTableAssociation, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm RouteTableAssociation exists")
+	routeTableAssociationFound := &eccv1alpha1.RouteTableAssociation{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: routeTableAssociation.Name, Namespace: routeTableAssociation.Namespace}, routeTableAssociationFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm RouteTableAssociation")
+		err = r.Create(context.TODO(), routeTableAssociation)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm RouteTableAssociation %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm RouteTableAssociation is present")
+	err = r.Update(context.TODO(), routeTableAssociation)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(routeTableAssociation.Spec, routeTableAssociationFound.Spec) {
+		routeTableAssociationFound.Spec = routeTableAssociation.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm RouteTableAssociation")
+		err = r.Update(context.TODO(), routeTableAssociationFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END ROUTE TABLE ASSOCIATION STUFF ///
+
+	///  EC2 SECURITY GROUP STUFF ////
+	// TODO(user): Change this to be the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm EC2EC2SecurityGroup")
+
+	ec2SecurityGroup := &eccv1alpha1.EC2SecurityGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-ec2securitygroup",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.EC2SecurityGroupSpec{
+			EC2SecurityGroupName: instance.Name + "-ec2securitygroup",
+			VPCName:              vpc.Name,
+			Description:          "A fun and exciting security group for the swarm",
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, ec2SecurityGroup, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm EC2SecurityGroup exists")
+	ec2SecurityGroupFound := &eccv1alpha1.EC2SecurityGroup{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: ec2SecurityGroup.Name, Namespace: ec2SecurityGroup.Namespace}, ec2SecurityGroupFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm EC2SecurityGroup")
+		err = r.Create(context.TODO(), ec2SecurityGroup)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm EC2SecurityGroup %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm EC2SecurityGroup is present")
+	err = r.Update(context.TODO(), ec2SecurityGroup)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(ec2SecurityGroup.Spec, ec2SecurityGroupFound.Spec) {
+		ec2SecurityGroupFound.Spec = ec2SecurityGroup.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm EC2SecurityGroup")
+		err = r.Update(context.TODO(), ec2SecurityGroupFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END EC2 SECURITY GROUP STUFF ///
 
 	return reconcile.Result{}, nil
 }
