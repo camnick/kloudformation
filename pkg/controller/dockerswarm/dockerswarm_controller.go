@@ -232,13 +232,13 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	/// END SUBNET STUFF ///
 
-	/// EIP STUFF ////
+	/// internetGatewayEIP STUFF ////
 	// TODO(user): Change this to be the object type created by your controller
 	// Define the desired VPC object
-	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm EIP")
-	eip := &eccv1alpha1.EIP{
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm InternetGatewayEIP")
+	internetgatewayeip := &eccv1alpha1.EIP{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-eip",
+			Name:      instance.Name + "-internetgateway-eip",
 			Namespace: instance.Namespace,
 		},
 		Spec: eccv1alpha1.EIPSpec{
@@ -246,7 +246,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			Tags: []eccv1alpha1.ResourceTag{
 				{
 					Key:   "Name",
-					Value: "SwarmIP",
+					Value: "SwarmInternetGatewayEIP",
 				},
 				{
 					Key:   "SwarmOwner",
@@ -255,35 +255,35 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			},
 		},
 	}
-	if err := controllerutil.SetControllerReference(instance, eip, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(instance, internetgatewayeip, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	// TODO(user): Change this for the object type created by your controller
 	// Check if the VPC already exists
-	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm EIP exists")
-	eipFound := &eccv1alpha1.EIP{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: eip.Name, Namespace: eip.Namespace}, eipFound)
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm InternetGatewayEIP exists")
+	internetgatewayeipFound := &eccv1alpha1.EIP{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: internetgatewayeip.Name, Namespace: internetgatewayeip.Namespace}, internetgatewayeipFound)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm EIP")
-		err = r.Create(context.TODO(), eip)
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm InternetGatewayEIP")
+		err = r.Create(context.TODO(), internetgatewayeip)
 		if err != nil {
-			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm EIP %s", err.Error())
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm InternetGatewayEIP %s", err.Error())
 			return reconcile.Result{}, err
 		}
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
-	r.events.Eventf(instance, `Normal`, `Info`, "Swarm EIP is present")
-	err = r.Update(context.TODO(), eip)
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm InternetGatewayEIP is present")
+	err = r.Update(context.TODO(), internetgatewayeip)
 
 	// TODO(user): Change this for the object type created by your controller
 	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(eip.Spec, eipFound.Spec) {
-		eipFound.Spec = eip.Spec
-		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm Subnet")
-		err = r.Update(context.TODO(), eipFound)
+	if !reflect.DeepEqual(internetgatewayeip.Spec, internetgatewayeipFound.Spec) {
+		internetgatewayeipFound.Spec = internetgatewayeip.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm InternetGatewayEIP")
+		err = r.Update(context.TODO(), internetgatewayeipFound)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -347,6 +347,55 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 	/// END INTERNETGATEWAY STUFF ///
+
+	/// INTERNETGATEWAYATTACHMENT STUFF ////
+	// TODO(user): Change this to be the object type created by your controller
+	// Define the desired VPC object
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm InternetGatewayAttachment")
+	internetGatewayAttachment := &eccv1alpha1.InternetGatewayAttachment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-internetgatewayattachment",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.InternetGatewayAttachmentSpec{
+			VPCName:             vpc.Name,
+			InternetGatewayName: internetGateway.Name,
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, internetGatewayAttachment, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	// Check if the VPC already exists
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm InternetGatewayAttachment exists")
+	internetGatewayAttachmentFound := &eccv1alpha1.InternetGatewayAttachment{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: internetGatewayAttachment.Name, Namespace: internetGatewayAttachment.Namespace}, internetGatewayAttachmentFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm InternetGatewayAttachment")
+		err = r.Create(context.TODO(), internetGatewayAttachment)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm InternetGatewayAttachment %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm InternetGatewayAttachment is present")
+	err = r.Update(context.TODO(), internetGatewayAttachment)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(internetGatewayAttachment.Spec, internetGatewayAttachmentFound.Spec) {
+		internetGatewayAttachmentFound.Spec = internetGatewayAttachment.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm InternetGatewayAttachment")
+		err = r.Update(context.TODO(), internetGatewayAttachmentFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END INTERNETGATEWAYATTACHMENT STUFF ///
 
 	return reconcile.Result{}, nil
 }
