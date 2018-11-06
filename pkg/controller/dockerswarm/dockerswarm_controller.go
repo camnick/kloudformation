@@ -151,7 +151,6 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil && errors.IsNotFound(err) {
 		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm VPC")
 		err = r.Create(context.TODO(), vpc)
-
 		if err != nil {
 			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm VPC %s", err.Error())
 			return reconcile.Result{}, err
