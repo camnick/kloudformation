@@ -132,8 +132,8 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			InstanceTenancy:    "default",
 			Tags: []eccv1alpha1.ResourceTag{
 				{
-					Key:   "foo",
-					Value: "bar",
+					Key:   "Name",
+					Value: "SwarmVPC",
 				},
 			},
 		},
@@ -172,6 +172,5 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 	}
-
 	return reconcile.Result{}, nil
 }
