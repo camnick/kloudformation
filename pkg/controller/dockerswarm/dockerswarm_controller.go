@@ -714,5 +714,56 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	/// END EC2 SECURITY GROUP STUFF ///
 
+	///  EC2 SECURITY GROUP INGRESS STUFF ////
+	// TODO(user): Change this to be the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm AuthorizeEC2SecurityGroupIngress")
+
+	authorizeEC2SecurityGroupIngress := &eccv1alpha1.AuthorizeEC2SecurityGroupIngress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-authorizeec2securitygroupingress",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.AuthorizeEC2SecurityGroupIngressSpec{
+			SourceCidrIp:         "0.0.0.0/0",
+			EC2SecurityGroupName: ec2SecurityGroup.Name,
+			FromPort:             22,
+			ToPort:               22,
+			IpProtocol:           "tcp",
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, authorizeEC2SecurityGroupIngress, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm AuthorizeEC2SecurityGroupIngress exists")
+	authorizeEC2SecurityGroupIngressFound := &eccv1alpha1.AuthorizeEC2SecurityGroupIngress{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: authorizeEC2SecurityGroupIngress.Name, Namespace: authorizeEC2SecurityGroupIngress.Namespace}, authorizeEC2SecurityGroupIngressFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm AuthorizeEC2SecurityGroupIngress")
+		err = r.Create(context.TODO(), authorizeEC2SecurityGroupIngress)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm AuthorizeEC2SecurityGroupIngress %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm AuthorizeEC2SecurityGroupIngress is present")
+	err = r.Update(context.TODO(), authorizeEC2SecurityGroupIngress)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(authorizeEC2SecurityGroupIngress.Spec, authorizeEC2SecurityGroupIngressFound.Spec) {
+		authorizeEC2SecurityGroupIngressFound.Spec = authorizeEC2SecurityGroupIngress.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm AuthorizeEC2SecurityGroupIngress")
+		err = r.Update(context.TODO(), authorizeEC2SecurityGroupIngressFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END EC2 SECURITY GROUP INGRESS STUFF ///
+
 	return reconcile.Result{}, nil
 }
