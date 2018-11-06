@@ -144,6 +144,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 	// if absent then create
 	ec2InstanceId, ok := instance.ObjectMeta.Annotations[`ec2InstanceId`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EC2Instance in %s", *r.sess.Config.Region)
 		reservation, err := svc.RunInstances(&ec2.RunInstancesInput{
 			ImageId:      aws.String(instance.Spec.ImageId),

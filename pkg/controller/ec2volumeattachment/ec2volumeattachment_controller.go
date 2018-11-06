@@ -128,6 +128,7 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 	// if absent then create
 	ec2VolumeAttachmentResponse, ok := instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EC2VolumeAttachment in %s", *r.sess.Config.Region)
 		attachOutput, err := svc.AttachVolume(&ec2.AttachVolumeInput{
 			Device:     aws.String(instance.Spec.DevicePath),

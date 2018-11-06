@@ -101,7 +101,7 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// if absent then create
 	vpcid, ok := instance.ObjectMeta.Annotations[`vpcid`]
 	if !ok {
-		instance.ObjectMeta.Annotations = make(map[string]string)
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS VPC in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateVpc(&ec2.CreateVpcInput{
 			CidrBlock:       aws.String(instance.Spec.CIDRBlock),

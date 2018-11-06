@@ -129,6 +129,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 	// if absent then create
 	iamRolePolicyAttached, ok := instance.ObjectMeta.Annotations[`iamRolePolicyAttached`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS IAMAttachRolePolicy in %s", *r.sess.Config.Region)
 		createOutput, err := svc.AttachRolePolicy(&iam.AttachRolePolicyInput{
 			PolicyArn: aws.String(policy.ObjectMeta.Annotations[`iamPolicyArn`]),

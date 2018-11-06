@@ -113,6 +113,7 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 	// if absent then create
 	volumeId, ok := instance.ObjectMeta.Annotations[`volumeId`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Volume in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateVolume(&ec2.CreateVolumeInput{
 			AvailabilityZone: aws.String(instance.Spec.AvailabilityZone),

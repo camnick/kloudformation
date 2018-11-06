@@ -115,6 +115,7 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 	// if absent then create
 	subnetid, ok := instance.ObjectMeta.Annotations[`subnetid`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Subnet in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateSubnet(&ec2.CreateSubnetInput{
 			//			AssignIpv6AddressOnCreation: aws.Bool(instance.Spec.AssignIpv6AddressOnCreation),

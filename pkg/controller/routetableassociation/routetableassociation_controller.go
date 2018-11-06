@@ -128,6 +128,7 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 	// if absent then create
 	routeTableAssociationId, ok := instance.ObjectMeta.Annotations[`routeTableAssociationId`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTableAssociation in %s", *r.sess.Config.Region)
 		associateOutput, err := svc.AssociateRouteTable(&ec2.AssociateRouteTableInput{
 			RouteTableId: aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),

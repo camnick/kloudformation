@@ -115,6 +115,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 	// if absent then create
 	ec2SecurityGroupId, ok := instance.ObjectMeta.Annotations[`ec2SecurityGroupId`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EC2SecurityGroup in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
 			Description: aws.String(instance.Spec.Description),

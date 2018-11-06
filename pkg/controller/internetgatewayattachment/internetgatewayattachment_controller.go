@@ -128,6 +128,7 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 	// if absent then create
 	internetGatewayAttached, ok := instance.ObjectMeta.Annotations[`internetGatewayAttached`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Internet Gateway Attachment in %s", *r.sess.Config.Region)
 		createOutput, err := svc.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
 			InternetGatewayId: aws.String(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]),

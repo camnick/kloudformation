@@ -128,6 +128,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	// if absent then create
 	routeCreated, ok := instance.ObjectMeta.Annotations[`routeCreated`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Route in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRoute(&ec2.CreateRouteInput{
 			DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),

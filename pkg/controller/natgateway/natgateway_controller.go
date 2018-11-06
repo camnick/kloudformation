@@ -142,6 +142,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 	// if absent then create
 	natGatewayId, ok := instance.ObjectMeta.Annotations[`natGatewayId`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS NATGateway in %s", *r.sess.Config.Region)
 
 		createOutput, err := svc.CreateNatGateway(&ec2.CreateNatGatewayInput{

@@ -128,6 +128,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 	// if absent then create
 	eipAssociationId, ok := instance.ObjectMeta.Annotations[`eipAssociationId`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EIP Association in %s", *r.sess.Config.Region)
 		associateOutput, err := svc.AssociateAddress(&ec2.AssociateAddressInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),

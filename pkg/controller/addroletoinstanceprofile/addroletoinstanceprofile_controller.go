@@ -129,6 +129,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 	// if absent then create
 	iamRoleAddedToInstanceProfile, ok := instance.ObjectMeta.Annotations[`iamRoleAddedToInstanceProfile`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS AddRoleToInstanceProfile in %s", *r.sess.Config.Region)
 		createOutput, err := svc.AddRoleToInstanceProfile(&iam.AddRoleToInstanceProfileInput{
 			InstanceProfileName: aws.String(instanceProfile.ObjectMeta.Annotations[`awsInstanceProfileName`]),
