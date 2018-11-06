@@ -158,8 +158,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
-	vpc.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `dockerswarms.swarm.aws.gotopple.com`)
-	r.events.Eventf(instance, `Normal`, `Info`, "Swarm VPC created")
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm VPC is present")
 	err = r.Update(context.TODO(), vpc)
 
 	// TODO(user): Change this for the object type created by your controller

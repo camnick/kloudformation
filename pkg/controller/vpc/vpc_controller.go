@@ -101,13 +101,14 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// if absent then create
 	vpcid, ok := instance.ObjectMeta.Annotations[`vpcid`]
 	if !ok {
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS VPC in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateVpc(&ec2.CreateVpcInput{
 			CidrBlock:       aws.String(instance.Spec.CIDRBlock),
 			InstanceTenancy: aws.String(instance.Spec.InstanceTenancy),
 		})
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `Create failed: %s`, err.Error())
 			return reconcile.Result{}, err
 		}
 		if createOutput == nil {
