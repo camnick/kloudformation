@@ -775,5 +775,59 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	/// END EC2 SECURITY GROUP INGRESS STUFF ///
 
+	// START EC2 KEYPAIR
+	// TODO(user): Change this to be the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm EC2KeyPair")
+
+	ec2KeyPair := &eccv1alpha1.EC2KeyPair{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-ec2keypair",
+			Namespace: instance.Namespace,
+		},
+		Spec: eccv1alpha1.EC2KeyPairSpec{
+			EC2KeyPairName: instance.Name + "-EC2KeyPair",
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, ec2KeyPair, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm EC2KeyPair exists")
+	ec2KeyPairFound := &eccv1alpha1.EC2KeyPair{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: ec2KeyPair.Name, Namespace: ec2KeyPair.Namespace}, ec2KeyPairFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm EC2KeyPair")
+		err = r.Create(context.TODO(), ec2KeyPair)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm EC2KeyPair %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm EC2KeyPair is present")
+	err = r.Update(context.TODO(), ec2KeyPair)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(ec2KeyPair.Spec, ec2KeyPairFound.Spec) {
+		ec2KeyPairFound.Spec = ec2KeyPair.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm EC2KeyPair")
+		err = r.Update(context.TODO(), ec2KeyPairFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	// END EC2 KEYPAIR
+
+	/// IAM
+	/// Policy
+	/// Role
+	/// Instance Profile
+	/// Attach Policy to Role
+	/// Attach Role to Instance Profile
+
 	return reconcile.Result{}, nil
 }

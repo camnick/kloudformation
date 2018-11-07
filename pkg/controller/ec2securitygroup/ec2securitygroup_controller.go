@@ -250,5 +250,16 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2SecurityGroup and removed finalizers")
 	}
 
+	// START EC2 KEYPAIR
+
+	// END EC2 KEYPAIR
+
+	/// IAM
+	/// Policy
+	/// Role
+	/// Instance Profile
+	/// Attach Policy to Role
+	/// Attach Role to Instance Profile
+
 	return reconcile.Result{}, nil
 }
