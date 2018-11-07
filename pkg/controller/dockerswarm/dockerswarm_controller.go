@@ -25,7 +25,7 @@ import (
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
 	swarmv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/swarm/v1alpha1"
 	//testv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/test/v1alpha1"
-	//iamv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/iam/v1alpha1"
+	iamv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/iam/v1alpha1"
 	//appsv1 "k8s.io/api/apps/v1"
 	//corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -824,6 +824,64 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 
 	/// IAM
 	/// Policy
+
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm IAMPolicy")
+
+	iamPolicy := &iamv1alpha1.IAMPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-iampolicy",
+			Namespace: instance.Namespace,
+		},
+		Spec: iamv1alpha1.IAMPolicySpec{
+			PolicyName:  instance.Name + "-IAMPolicy",
+			Path:        "/",
+			Description: "A happy little policy description",
+			PolicyDocument: `{
+		    "Version" : "2012-10-17",
+		    "Statement" : [
+		      {
+		        "Effect" : "Allow",
+		        "Action" : "ec2:DescribeInstances",
+		        "Resource" : "*"
+		      }
+		    ]
+		  }`,
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, iamPolicy, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm IAMPolicy exists")
+	iamPolicyFound := &iamv1alpha1.IAMPolicy{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: iamPolicy.Name, Namespace: iamPolicy.Namespace}, iamPolicyFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm IAMPolicy")
+		err = r.Create(context.TODO(), iamPolicy)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm IAMPolicy %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMPolicy is present")
+	err = r.Update(context.TODO(), iamPolicy)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(iamPolicy.Spec, iamPolicyFound.Spec) {
+		iamPolicyFound.Spec = iamPolicy.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm IAMPolicy")
+		err = r.Update(context.TODO(), iamPolicyFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	/// END POLICY STUFF
 	/// Role
 	/// Instance Profile
 	/// Attach Policy to Role
