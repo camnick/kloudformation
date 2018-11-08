@@ -19,7 +19,7 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
-  - authorizeec2securitygroupingresss
+  - authorizeec2securitygroupingress
   verbs:
   - get
   - list
