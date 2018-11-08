@@ -121,9 +121,11 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 
 		iamPolicyId = *createOutput.Policy.PolicyId
 		iamPolicyArn := *createOutput.Policy.Arn
+		iamPolicyAwsName := *createOutput.Policy.PolicyName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMPolicy (%s)", iamPolicyId)
 		instance.ObjectMeta.Annotations[`iamPolicyId`] = iamPolicyId
 		instance.ObjectMeta.Annotations[`iamPolicyArn`] = iamPolicyArn
+		instance.ObjectMeta.Annotations[`iamPolicyAwsName`] = iamPolicyAwsName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iampolicies.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
