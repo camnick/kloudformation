@@ -1000,8 +1000,8 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			Namespace: instance.Namespace,
 		},
 		Spec: iamv1alpha1.IAMAttachRolePolicySpec{
-			IamRoleName:   instance.Name + "-role",
-			IamPolicyName: instance.Name + "-IAMPolicy",
+			IamRoleName:   role.ObjectMeta.Annotations[`awsRoleName`],
+			IamPolicyName: iamPolicy.Spec.PolicyName,
 		},
 	}
 	if err := controllerutil.SetControllerReference(instance, iamAttachRolePolicy, r.scheme); err != nil {
