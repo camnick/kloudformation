@@ -101,11 +101,11 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found: %s", err.Error())
 			return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 		}
 		return reconcile.Result{}, err
-	} else if len(role.ObjectMeta.Annotations[`roleId`]) <= 0 {
+	} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
 		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
 		return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 	}
@@ -114,7 +114,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamPolicyName, Namespace: instance.Namespace}, policy)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not found")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not found: %s", err.Error())
 			return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
 		}
 		return reconcile.Result{}, err

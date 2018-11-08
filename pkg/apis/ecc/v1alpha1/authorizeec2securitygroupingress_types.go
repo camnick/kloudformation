@@ -25,6 +25,7 @@ import (
 
 // AuthorizeEC2SecurityGroupIngressSpec defines the desired state of AuthorizeEC2SecurityGroupIngress
 type AuthorizeEC2SecurityGroupIngressSpec struct {
+	RuleName             string `json:"ruleName"`
 	SourceCidrIp         string `json:"sourceCidrIp"`
 	EC2SecurityGroupName string `json:"ec2SecurityGroupName"`
 	FromPort             int64  `json:"fromPort"`
