@@ -82,7 +82,7 @@ type ReconcileAuthorizeEC2SecurityGroupIngress struct {
 // Reconcile reads that state of the cluster for a AuthorizeEC2SecurityGroupIngress object and makes changes based on the state read
 // and what is in the AuthorizeEC2SecurityGroupIngress.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=authorizeec2securitygroupingresss,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=authorizeec2securitygroupingress,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the AuthorizeEC2SecurityGroupIngress instance
 	instance := &eccv1alpha1.AuthorizeEC2SecurityGroupIngress{}
@@ -135,7 +135,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		ingressAuthorized = "yes"
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS AuthorizeEC2SecurityGroupIngress for EC2SecurityGroup (%s)", ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`])
 		instance.ObjectMeta.Annotations[`ingressAuthorized`] = ingressAuthorized
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `authorizeec2securitygroupingresss.ecc.aws.gotopple.com`)
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -192,10 +192,20 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		}
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
+		ec2SecurityGroup.ObjectMeta.Finalizers = append(ec2SecurityGroup.ObjectMeta.Finalizers, `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
+		err = r.Update(context.TODO(), ec2SecurityGroup)
+		if err != nil {
+			r.events.Event(instance, `Warning`, `Annotated`, "Adding finalizer to Security Group failed")
+			r.events.Event(ec2SecurityGroup, `Warning`, `Annotated`, "Failed to add finalizer to Security Group")
+
+		}
+		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to parent Security Group")
+		r.events.Event(ec2SecurityGroup, `Normal`, `Annotated`, "Added finalizer to Security Group")
+
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `authorizeec2securitygroupingresss.ecc.aws.gotopple.com` {
+			if f == `authorizeec2securitygroupingress.ecc.aws.gotopple.com` {
 				instance.ObjectMeta.Finalizers = append(
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)
