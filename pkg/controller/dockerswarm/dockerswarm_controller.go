@@ -837,15 +837,15 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			Path:        "/",
 			Description: "A happy little policy description",
 			PolicyDocument: `{
-		    "Version" : "2012-10-17",
-		    "Statement" : [
-		      {
-		        "Effect" : "Allow",
-		        "Action" : "ec2:DescribeInstances",
-		        "Resource" : "*"
-		      }
-		    ]
-		  }`,
+				"Version" : "2012-10-17",
+				"Statement" : [
+					{
+						"Effect" : "Allow",
+						"Action" : "ec2:DescribeInstances",
+						"Resource" : "*"
+					}
+				]
+			}`,
 		},
 	}
 	if err := controllerutil.SetControllerReference(instance, iamPolicy, r.scheme); err != nil {
@@ -897,15 +897,15 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			Description:        "A happy little role description",
 			Path:               "/",
 			AssumeRolePolicyDocument: `{
-		    "Version" : "2012-10-17",
-		    "Statement" : [ {
-		      "Effect" : "Allow",
-		      "Principal" : {
-		        "Service" : [ "ec2.amazonaws.com" ]
-		      },
-		      "Action" : [ "sts:AssumeRole" ]
-		    } ]
-		  }`,
+				"Version" : "2012-10-17",
+				"Statement" : [ {
+					"Effect" : "Allow",
+					"Principal" : {
+						"Service" : [ "ec2.amazonaws.com" ]
+					},
+					"Action" : [ "sts:AssumeRole" ]
+				} ]
+			}`,
 		},
 	}
 	if err := controllerutil.SetControllerReference(instance, role, r.scheme); err != nil {
@@ -1000,8 +1000,8 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			Namespace: instance.Namespace,
 		},
 		Spec: iamv1alpha1.IAMAttachRolePolicySpec{
-			IamRoleName:   role.ObjectMeta.Annotations[`awsRoleName`],
-			IamPolicyName: iamPolicy.Spec.PolicyName,
+			IamRoleName:   instance.Name + "-role",
+			IamPolicyName: instance.Name + "-IAMPolicy",
 		},
 	}
 	if err := controllerutil.SetControllerReference(instance, iamAttachRolePolicy, r.scheme); err != nil {
