@@ -133,7 +133,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS IAMAttachRolePolicy in %s", *r.sess.Config.Region)
 		createOutput, err := svc.AttachRolePolicy(&iam.AttachRolePolicyInput{
 			PolicyArn: aws.String(policy.ObjectMeta.Annotations[`iamPolicyArn`]),
-			RoleName:  aws.String(role.Spec.RoleName),
+			RoleName:  aws.String(role.ObjectMeta.Annotations[`awsRoleName`]),
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
