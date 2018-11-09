@@ -1089,20 +1089,22 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 
 	/// manager ec2 instances
 
+	managerNames := []string{
+		"manager0", "manager1", "manager2", "manager3", "manager4", "manager5",
+	}
+
 	for managerNum := 1; managerNum <= instance.Spec.NumManagers; managerNum++ {
-
-		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Manager "+string(managerNum))
-
+		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Manager ", managerNum)
 		manager := &eccv1alpha1.EC2Instance{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      (instance.Name + "-" + "manager-" + string(managerNum)),
+				Name:      (instance.Name + managerNames[managerNum]),
 				Namespace: instance.Namespace,
 			},
 			Spec: eccv1alpha1.EC2InstanceSpec{
 				ImageId:      "ami-6cd6f714",
 				InstanceType: "t2.micro",
-				EC2KeyPair:   ec2KeyPair.ObjectMeta.Annotations[`awsKeyName`],
-				SubnetName:   subnet.ObjectMeta.Annotations[`subnetid`],
+				EC2KeyPair:   ec2KeyPair.Name,
+				SubnetName:   subnet.Name,
 				Tags: []eccv1alpha1.ResourceTag{
 					{
 						Key:   "Name",
@@ -1110,7 +1112,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 					},
 				},
 				UserData:             "",
-				EC2SecurityGroupName: ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`],
+				EC2SecurityGroupName: ec2SecurityGroup.Name,
 			},
 		}
 		if err := controllerutil.SetControllerReference(instance, manager, r.scheme); err != nil {
@@ -1146,6 +1148,9 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			}
 		}
 	}
+
+
+
 
 	return reconcile.Result{}, nil
 }
