@@ -1092,7 +1092,6 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	managerNames := []string{
 		"manager0", "manager1", "manager2", "manager3", "manager4", "manager5",
 	}
-
 	for managerNum := 1; managerNum <= instance.Spec.NumManagers; managerNum++ {
 		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Manager ", managerNum)
 		manager := &eccv1alpha1.EC2Instance{
@@ -1149,8 +1148,67 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 
+	/// worker ec2 instances
 
+	workerNames := []string{
+		"worker0", "worker1", "worker2", "worker3", "worker4", "worker5",
+	}
 
+	for workerNum := 1; workerNum <= instance.Spec.NumWorkers; workerNum++ {
+		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Worker ", workerNum)
+		worker := &eccv1alpha1.EC2Instance{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      (instance.Name + workerNames[workerNum]),
+				Namespace: instance.Namespace,
+			},
+			Spec: eccv1alpha1.EC2InstanceSpec{
+				ImageId:      "ami-6cd6f714",
+				InstanceType: "t2.micro",
+				EC2KeyPair:   ec2KeyPair.Name,
+				SubnetName:   subnet.Name,
+				Tags: []eccv1alpha1.ResourceTag{
+					{
+						Key:   "Name",
+						Value: "Worker ",
+					},
+				},
+				UserData:             "",
+				EC2SecurityGroupName: ec2SecurityGroup.Name,
+			},
+		}
+		if err := controllerutil.SetControllerReference(instance, worker, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// TODO(user): Change this for the object type created by your controller
+		r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm Worker `+` exists`)
+		workerFound := &eccv1alpha1.EC2Instance{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: worker.Name, Namespace: worker.Namespace}, workerFound)
+
+		if err != nil && errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm Worker ")
+			err = r.Create(context.TODO(), worker)
+			if err != nil {
+				r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm Worker %s", err.Error())
+				return reconcile.Result{}, err
+			}
+		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+		r.events.Eventf(instance, `Normal`, `Info`, "Swarm Worker is present")
+		err = r.Update(context.TODO(), worker)
+
+		// TODO(user): Change this for the object type created by your controller
+		// Update the found object and write the result back if there are any changes
+		if !reflect.DeepEqual(worker.Spec, workerFound.Spec) {
+			workerFound.Spec = worker.Spec
+			r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm Worker ")
+			err = r.Update(context.TODO(), workerFound)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	}
 
 	return reconcile.Result{}, nil
 }
