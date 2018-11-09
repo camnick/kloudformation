@@ -218,7 +218,12 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
+		// need to add check for other Finalizers
 
+		if len(instance.ObjectMeta.Finalizers) != 0 {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
+			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
+		}
 		// must delete
 		_, err = svc.DeleteSecurityGroup(&ec2.DeleteSecurityGroupInput{
 			GroupId: aws.String(ec2SecurityGroupId),
