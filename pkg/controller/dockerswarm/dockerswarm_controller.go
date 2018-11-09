@@ -1088,60 +1088,64 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	/// END ATTACH ROLE TO INSTANCE PROFILE
 
 	/// manager ec2 instances
-	/*
-		for managerNum in instance.Spec.NumManagers {
 
-			r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Managers")
+	for managerNum := 1; managerNum <= instance.Spec.NumManagers; managerNum++ {
 
-			 managerNum := &ecc1alpha1.EC2Instance{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      (instance.Name + "-manager-" + managerNum),
-					Namespace: instance.Namespace,
+		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Manager "+string(managerNum))
+
+		manager := &eccv1alpha1.EC2Instance{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      (instance.Name + "-" + "manager-" + string(managerNum)),
+				Namespace: instance.Namespace,
+			},
+			Spec: eccv1alpha1.EC2InstanceSpec{
+				ImageId:      "ami-6cd6f714",
+				InstanceType: "t2.micro",
+				EC2KeyPair:   ec2KeyPair.ObjectMeta.Annotations[`awsKeyName`],
+				SubnetName:   subnet.ObjectMeta.Annotations[`subnetid`],
+				Tags: []eccv1alpha1.ResourceTag{
+					{
+						Key:   "Name",
+						Value: "Manager ",
+					},
 				},
-				Spec: eccv1alpha1.EC2InstanceSpec{
-					ImageId: ,
-					InstanceType:            ,
-					EC2KeyPair: ,
-					SubnetName: ,
-					Tags: ,
-					UserData: ,
-					EC2SecurityGroupName: ,
-				},
-			}
-			if err := controllerutil.SetControllerReference(instance, managerNum, r.scheme); err != nil {
+				UserData:             "",
+				EC2SecurityGroupName: ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`],
+			},
+		}
+		if err := controllerutil.SetControllerReference(instance, manager, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// TODO(user): Change this for the object type created by your controller
+		r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm Manager `+` exists`)
+		managerFound := &eccv1alpha1.EC2Instance{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: manager.Name, Namespace: manager.Namespace}, managerFound)
+
+		if err != nil && errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm Manager ")
+			err = r.Create(context.TODO(), manager)
+			if err != nil {
+				r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm Manager %s", err.Error())
 				return reconcile.Result{}, err
 			}
+		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+		r.events.Eventf(instance, `Normal`, `Info`, "Swarm Manager is present")
+		err = r.Update(context.TODO(), manager)
 
-			// TODO(user): Change this for the object type created by your controller
-			r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm Manager ` + managerNum + ` exists`)
-			managerNum := &eccv1alpha1.EC2Instance{}
-			err = r.Get(context.TODO(), types.NamespacedName{Name: managerNum.Name, Namespace: managerNum.Namespace}, managerNumFound)
-
-			if err != nil && errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm Manager " + managerNum)
-				err = r.Create(context.TODO(), managerNum)
-				if err != nil {
-					r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm Manager " + managerNum + " %s", err.Error())
-					return reconcile.Result{}, err
-				}
-			} else if err != nil {
+		// TODO(user): Change this for the object type created by your controller
+		// Update the found object and write the result back if there are any changes
+		if !reflect.DeepEqual(manager.Spec, managerFound.Spec) {
+			managerFound.Spec = manager.Spec
+			r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm Manager ")
+			err = r.Update(context.TODO(), managerFound)
+			if err != nil {
 				return reconcile.Result{}, err
-			}
-			r.events.Eventf(instance, `Normal`, `Info`, "Swarm Manager " + managerNum + " is present")
-			err = r.Update(context.TODO(), managerNum)
-
-			// TODO(user): Change this for the object type created by your controller
-			// Update the found object and write the result back if there are any changes
-			if !reflect.DeepEqual(managerNum.Spec, managerNumFound.Spec) {
-				managerNumFound.Spec = managerNum.Spec
-				r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm Manager " + managerNum)
-				err = r.Update(context.TODO(), managerNumFound)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
 			}
 		}
-	*/
+	}
 
 	return reconcile.Result{}, nil
 }
