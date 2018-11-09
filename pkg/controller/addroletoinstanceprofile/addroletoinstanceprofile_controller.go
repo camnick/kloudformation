@@ -105,7 +105,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 			return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 		}
 		return reconcile.Result{}, err
-	} else if len(role.ObjectMeta.Annotations[`roleId`]) <= 0 {
+	} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
 		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
 		return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 	}
