@@ -213,6 +213,7 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `subnets.ecc.aws.gotopple.com` {
@@ -222,6 +223,7 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 			}
 		}
 
+		//check for finalizers placed by other controllers first
 		if len(instance.ObjectMeta.Finalizers) != 0 {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
 			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)

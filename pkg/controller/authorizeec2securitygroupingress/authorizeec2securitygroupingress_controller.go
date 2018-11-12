@@ -246,6 +246,8 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		}
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted AuthorizeEC2SecurityGroupIngress and removed finalizers")
 
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
+
 		// remove finalizer from parent security group
 		for i, f := range ec2SecurityGroup.ObjectMeta.Finalizers {
 			if f == (instance.Spec.RuleName + `.authorizeec2securitygroupingress.ecc.aws.gotopple.com`) {

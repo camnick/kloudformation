@@ -163,6 +163,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMPolicy is present")
+	instance.ObjectMeta.Annotations[`iamPolicy`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), iamPolicy)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -223,6 +229,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm Role is present")
+	instance.ObjectMeta.Annotations[`iamRole`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), role)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -270,6 +282,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMAttachRolePolicy is present")
+	instance.ObjectMeta.Annotations[`iamAttachRolePolicy`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), iamAttachRolePolicy)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -318,6 +336,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMInstanceProfile is present")
+	instance.ObjectMeta.Annotations[`iamInstanceProfile`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), iamInstanceProfile)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -366,6 +390,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm AddRoleToInstanceProfile is present")
+	instance.ObjectMeta.Annotations[`addRoleToInstanceProfile`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), addRoleToInstanceProfile)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -423,6 +453,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm VPC is present")
+	instance.ObjectMeta.Annotations[`vpc`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), vpc)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -482,6 +518,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm Subnet is present")
+	instance.ObjectMeta.Annotations[`subnet`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), subnet)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -540,6 +582,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm InternetGatewayEIP is present")
+	instance.ObjectMeta.Annotations[`internetGatewayEIP`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), internetgatewayeip)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -598,6 +646,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm InternetGateway is present")
+	instance.ObjectMeta.Annotations[`internetGateway`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), internetGateway)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -647,6 +701,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm InternetGatewayAttachment is present")
+	instance.ObjectMeta.Annotations[`internetGatewayAttachment`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), internetGatewayAttachment)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -703,6 +763,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm NATGatewayEIP is present")
+	instance.ObjectMeta.Annotations[`natGatewayEIP`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), natGatewayEIP)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -761,6 +827,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm NATGateway is present")
+	instance.ObjectMeta.Annotations[`natGateway`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), natGateway)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -818,6 +890,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm RouteTable is present")
+	instance.ObjectMeta.Annotations[`routeTable`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), routeTable)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -867,6 +945,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm Route is present")
+	instance.ObjectMeta.Annotations[`route`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), route)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -915,6 +999,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm RouteTableAssociation is present")
+	instance.ObjectMeta.Annotations[`routeTableAssociation`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), routeTableAssociation)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -974,6 +1064,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm EC2SecurityGroup is present")
+	instance.ObjectMeta.Annotations[`ec2SecurityGroup`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), ec2SecurityGroup)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -1026,6 +1122,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm AuthorizeEC2SecurityGroupIngress is present")
+	instance.ObjectMeta.Annotations[`ec2Ingress`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), authorizeEC2SecurityGroupIngress)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -1073,6 +1175,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 	r.events.Eventf(instance, `Normal`, `Info`, "Swarm EC2KeyPair is present")
+	instance.ObjectMeta.Annotations[`ec2KeyPair`] = "created"
+	err = r.Update(context.TODO(), instance)
+	if err != nil {
+		r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+	}
+
 	err = r.Update(context.TODO(), ec2KeyPair)
 
 	// TODO(user): Change this for the object type created by your controller
@@ -1134,6 +1242,12 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 		r.events.Eventf(instance, `Normal`, `Info`, "Swarm Manager is present")
+		instance.ObjectMeta.Annotations[`manager`] = "created"
+		err = r.Update(context.TODO(), instance)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+		}
+
 		err = r.Update(context.TODO(), manager)
 
 		// TODO(user): Change this for the object type created by your controller
@@ -1196,6 +1310,11 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, err
 		}
 		r.events.Eventf(instance, `Normal`, `Info`, "Swarm Worker is present")
+		instance.ObjectMeta.Annotations[`worker`] = "created"
+		err = r.Update(context.TODO(), instance)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't annotate swarm: %s`, err.Error())
+		}
 		err = r.Update(context.TODO(), worker)
 
 		// TODO(user): Change this for the object type created by your controller
