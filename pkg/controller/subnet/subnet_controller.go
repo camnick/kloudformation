@@ -222,6 +222,11 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 			}
 		}
 
+		if len(instance.ObjectMeta.Finalizers) != 0 {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
+			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
+		}
+
 		// must delete
 		_, err = svc.DeleteSubnet(&ec2.DeleteSubnetInput{
 			SubnetId: aws.String(subnetid),

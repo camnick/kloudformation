@@ -256,6 +256,12 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
+
+		if len(instance.ObjectMeta.Finalizers) != 0 {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
+			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
+		}
+
 		// delete the secret
 		err = r.Delete(context.TODO(), keySecret)
 		if err != nil {

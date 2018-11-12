@@ -117,6 +117,270 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	/// IAM
+	/// Policy
+
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm IAMPolicy")
+
+	iamPolicy := &iamv1alpha1.IAMPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-iampolicy",
+			Namespace: instance.Namespace,
+		},
+		Spec: iamv1alpha1.IAMPolicySpec{
+			PolicyName:  instance.Name + "-IAMPolicy",
+			Path:        "/",
+			Description: "A happy little policy description",
+			PolicyDocument: `{
+					"Version" : "2012-10-17",
+					"Statement" : [
+						{
+							"Effect" : "Allow",
+							"Action" : "ec2:DescribeInstances",
+							"Resource" : "*"
+						}
+					]
+				}`,
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, iamPolicy, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm IAMPolicy exists")
+	iamPolicyFound := &iamv1alpha1.IAMPolicy{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: iamPolicy.Name, Namespace: iamPolicy.Namespace}, iamPolicyFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm IAMPolicy")
+		err = r.Create(context.TODO(), iamPolicy)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm IAMPolicy %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMPolicy is present")
+	err = r.Update(context.TODO(), iamPolicy)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(iamPolicy.Spec, iamPolicyFound.Spec) {
+		iamPolicyFound.Spec = iamPolicy.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm IAMPolicy")
+		err = r.Update(context.TODO(), iamPolicyFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	/// END POLICY STUFF
+	/// Role
+
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Role")
+
+	role := &iamv1alpha1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-role",
+			Namespace: instance.Namespace,
+		},
+		Spec: iamv1alpha1.RoleSpec{
+			RoleName:           instance.Name + "-role",
+			MaxSessionDuration: 3600,
+			Description:        "A happy little role description",
+			Path:               "/",
+			AssumeRolePolicyDocument: `{
+					"Version" : "2012-10-17",
+					"Statement" : [ {
+						"Effect" : "Allow",
+						"Principal" : {
+							"Service" : [ "ec2.amazonaws.com" ]
+						},
+						"Action" : [ "sts:AssumeRole" ]
+					} ]
+				}`,
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, role, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm Role exists")
+	roleFound := &iamv1alpha1.Role{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, roleFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm Role")
+		err = r.Create(context.TODO(), role)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm Role %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm Role is present")
+	err = r.Update(context.TODO(), role)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(role.Spec, roleFound.Spec) {
+		roleFound.Spec = role.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm Role")
+		err = r.Update(context.TODO(), roleFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	/// END ROLE STUFF
+
+	/// Attach Policy to Role
+
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm IAMAttachRolePolicy")
+	iamAttachRolePolicy := &iamv1alpha1.IAMAttachRolePolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-iamattachrolepolicy",
+			Namespace: instance.Namespace,
+		},
+		Spec: iamv1alpha1.IAMAttachRolePolicySpec{
+			IamRoleName:   instance.Name + "-role",
+			IamPolicyName: iamPolicy.Name,
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, iamAttachRolePolicy, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm IAMAttachRolePolicy exists`)
+	iamAttachRolePolicyFound := &iamv1alpha1.IAMAttachRolePolicy{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: iamAttachRolePolicy.Name, Namespace: iamAttachRolePolicy.Namespace}, iamAttachRolePolicyFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm IAMAttachRolePolicy")
+		err = r.Create(context.TODO(), iamAttachRolePolicy)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm IAMAttachRolePolicy %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMAttachRolePolicy is present")
+	err = r.Update(context.TODO(), iamAttachRolePolicy)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(iamAttachRolePolicy.Spec, iamAttachRolePolicyFound.Spec) {
+		iamAttachRolePolicyFound.Spec = iamAttachRolePolicy.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm IAMAttachRolePolicy")
+		err = r.Update(context.TODO(), iamAttachRolePolicyFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	/// ATTACH POLICY FOR ROLE
+
+	/// Instance Profile
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm IAMInstanceProfile")
+
+	iamInstanceProfile := &iamv1alpha1.IAMInstanceProfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-iaminstanceprofile",
+			Namespace: instance.Namespace,
+		},
+		Spec: iamv1alpha1.IAMInstanceProfileSpec{
+			InstanceProfileName: instance.Name + "-iaminstanceprofile",
+			Path:                "/",
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, iamInstanceProfile, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm IAMInstanceProfile exists`)
+	iamInstanceProfileFound := &iamv1alpha1.IAMInstanceProfile{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: iamInstanceProfile.Name, Namespace: iamInstanceProfile.Namespace}, iamInstanceProfileFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm IAMInstanceProfile")
+		err = r.Create(context.TODO(), iamInstanceProfile)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm IAMInstanceProfile %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMInstanceProfile is present")
+	err = r.Update(context.TODO(), iamInstanceProfile)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(iamInstanceProfile.Spec, iamInstanceProfileFound.Spec) {
+		iamInstanceProfileFound.Spec = iamInstanceProfile.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm IAMInstanceProfile")
+		err = r.Update(context.TODO(), iamInstanceProfileFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	/// END INSTANCE PROFILE STUFF
+
+	/// ATTACH TOLE TO INSTANCE PROFILE
+	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm AddRoleToInstanceProfile")
+
+	addRoleToInstanceProfile := &iamv1alpha1.AddRoleToInstanceProfile{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-iaminstanceprofile",
+			Namespace: instance.Namespace,
+		},
+		Spec: iamv1alpha1.AddRoleToInstanceProfileSpec{
+			IamInstanceProfileName: instance.Name + "-iaminstanceprofile",
+			IamRoleName:            instance.Name + "-role",
+		},
+	}
+	if err := controllerutil.SetControllerReference(instance, addRoleToInstanceProfile, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO(user): Change this for the object type created by your controller
+	r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm AddRoleToInstanceProfile exists`)
+	addRoleToInstanceProfileFound := &iamv1alpha1.AddRoleToInstanceProfile{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: addRoleToInstanceProfile.Name, Namespace: addRoleToInstanceProfile.Namespace}, addRoleToInstanceProfileFound)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm AddRoleToInstanceProfile")
+		err = r.Create(context.TODO(), addRoleToInstanceProfile)
+		if err != nil {
+			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm AddRoleToInstanceProfile %s", err.Error())
+			return reconcile.Result{}, err
+		}
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+	r.events.Eventf(instance, `Normal`, `Info`, "Swarm AddRoleToInstanceProfile is present")
+	err = r.Update(context.TODO(), addRoleToInstanceProfile)
+
+	// TODO(user): Change this for the object type created by your controller
+	// Update the found object and write the result back if there are any changes
+	if !reflect.DeepEqual(addRoleToInstanceProfile.Spec, addRoleToInstanceProfileFound.Spec) {
+		addRoleToInstanceProfileFound.Spec = addRoleToInstanceProfile.Spec
+		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm AddRoleToInstanceProfile")
+		err = r.Update(context.TODO(), addRoleToInstanceProfileFound)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	/// END ATTACH ROLE TO INSTANCE PROFILE
+
 	// TODO(user): Change this to be the object type created by your controller
 	// Define the desired VPC object
 	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm VPC")
@@ -822,270 +1086,6 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 	// END EC2 KEYPAIR
-
-	/// IAM
-	/// Policy
-
-	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm IAMPolicy")
-
-	iamPolicy := &iamv1alpha1.IAMPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-iampolicy",
-			Namespace: instance.Namespace,
-		},
-		Spec: iamv1alpha1.IAMPolicySpec{
-			PolicyName:  instance.Name + "-IAMPolicy",
-			Path:        "/",
-			Description: "A happy little policy description",
-			PolicyDocument: `{
-				"Version" : "2012-10-17",
-				"Statement" : [
-					{
-						"Effect" : "Allow",
-						"Action" : "ec2:DescribeInstances",
-						"Resource" : "*"
-					}
-				]
-			}`,
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, iamPolicy, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm IAMPolicy exists")
-	iamPolicyFound := &iamv1alpha1.IAMPolicy{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: iamPolicy.Name, Namespace: iamPolicy.Namespace}, iamPolicyFound)
-
-	if err != nil && errors.IsNotFound(err) {
-		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm IAMPolicy")
-		err = r.Create(context.TODO(), iamPolicy)
-		if err != nil {
-			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm IAMPolicy %s", err.Error())
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMPolicy is present")
-	err = r.Update(context.TODO(), iamPolicy)
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(iamPolicy.Spec, iamPolicyFound.Spec) {
-		iamPolicyFound.Spec = iamPolicy.Spec
-		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm IAMPolicy")
-		err = r.Update(context.TODO(), iamPolicyFound)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
-	/// END POLICY STUFF
-	/// Role
-
-	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Role")
-
-	role := &iamv1alpha1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-role",
-			Namespace: instance.Namespace,
-		},
-		Spec: iamv1alpha1.RoleSpec{
-			RoleName:           instance.Name + "-role",
-			MaxSessionDuration: 3600,
-			Description:        "A happy little role description",
-			Path:               "/",
-			AssumeRolePolicyDocument: `{
-				"Version" : "2012-10-17",
-				"Statement" : [ {
-					"Effect" : "Allow",
-					"Principal" : {
-						"Service" : [ "ec2.amazonaws.com" ]
-					},
-					"Action" : [ "sts:AssumeRole" ]
-				} ]
-			}`,
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, role, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	r.events.Eventf(instance, `Normal`, `Info`, "Checking if swarm Role exists")
-	roleFound := &iamv1alpha1.Role{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, roleFound)
-
-	if err != nil && errors.IsNotFound(err) {
-		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm Role")
-		err = r.Create(context.TODO(), role)
-		if err != nil {
-			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm Role %s", err.Error())
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-	r.events.Eventf(instance, `Normal`, `Info`, "Swarm Role is present")
-	err = r.Update(context.TODO(), role)
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(role.Spec, roleFound.Spec) {
-		roleFound.Spec = role.Spec
-		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm Role")
-		err = r.Update(context.TODO(), roleFound)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-	/// END ROLE STUFF
-
-	/// Attach Policy to Role
-
-	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm IAMAttachRolePolicy")
-	iamAttachRolePolicy := &iamv1alpha1.IAMAttachRolePolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-iamattachrolepolicy",
-			Namespace: instance.Namespace,
-		},
-		Spec: iamv1alpha1.IAMAttachRolePolicySpec{
-			IamRoleName:   instance.Name + "-role",
-			IamPolicyName: iamPolicy.Name,
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, iamAttachRolePolicy, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm IAMAttachRolePolicy exists`)
-	iamAttachRolePolicyFound := &iamv1alpha1.IAMAttachRolePolicy{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: iamAttachRolePolicy.Name, Namespace: iamAttachRolePolicy.Namespace}, iamAttachRolePolicyFound)
-
-	if err != nil && errors.IsNotFound(err) {
-		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm IAMAttachRolePolicy")
-		err = r.Create(context.TODO(), iamAttachRolePolicy)
-		if err != nil {
-			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm IAMAttachRolePolicy %s", err.Error())
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMAttachRolePolicy is present")
-	err = r.Update(context.TODO(), iamAttachRolePolicy)
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(iamAttachRolePolicy.Spec, iamAttachRolePolicyFound.Spec) {
-		iamAttachRolePolicyFound.Spec = iamAttachRolePolicy.Spec
-		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm IAMAttachRolePolicy")
-		err = r.Update(context.TODO(), iamAttachRolePolicyFound)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
-	/// ATTACH POLICY FOR ROLE
-
-	/// Instance Profile
-	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm IAMInstanceProfile")
-
-	iamInstanceProfile := &iamv1alpha1.IAMInstanceProfile{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-iaminstanceprofile",
-			Namespace: instance.Namespace,
-		},
-		Spec: iamv1alpha1.IAMInstanceProfileSpec{
-			InstanceProfileName: instance.Name + "-iaminstanceprofile",
-			Path:                "/",
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, iamInstanceProfile, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm IAMInstanceProfile exists`)
-	iamInstanceProfileFound := &iamv1alpha1.IAMInstanceProfile{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: iamInstanceProfile.Name, Namespace: iamInstanceProfile.Namespace}, iamInstanceProfileFound)
-
-	if err != nil && errors.IsNotFound(err) {
-		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm IAMInstanceProfile")
-		err = r.Create(context.TODO(), iamInstanceProfile)
-		if err != nil {
-			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm IAMInstanceProfile %s", err.Error())
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-	r.events.Eventf(instance, `Normal`, `Info`, "Swarm IAMInstanceProfile is present")
-	err = r.Update(context.TODO(), iamInstanceProfile)
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(iamInstanceProfile.Spec, iamInstanceProfileFound.Spec) {
-		iamInstanceProfileFound.Spec = iamInstanceProfile.Spec
-		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm IAMInstanceProfile")
-		err = r.Update(context.TODO(), iamInstanceProfileFound)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
-	/// END INSTANCE PROFILE STUFF
-
-	/// ATTACH TOLE TO INSTANCE PROFILE
-	r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm AddRoleToInstanceProfile")
-
-	addRoleToInstanceProfile := &iamv1alpha1.AddRoleToInstanceProfile{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-iaminstanceprofile",
-			Namespace: instance.Namespace,
-		},
-		Spec: iamv1alpha1.AddRoleToInstanceProfileSpec{
-			IamInstanceProfileName: instance.Name + "-iaminstanceprofile",
-			IamRoleName:            instance.Name + "-role",
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, addRoleToInstanceProfile, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// TODO(user): Change this for the object type created by your controller
-	r.events.Eventf(instance, `Normal`, `Info`, `Checking if swarm AddRoleToInstanceProfile exists`)
-	addRoleToInstanceProfileFound := &iamv1alpha1.AddRoleToInstanceProfile{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: addRoleToInstanceProfile.Name, Namespace: addRoleToInstanceProfile.Namespace}, addRoleToInstanceProfileFound)
-
-	if err != nil && errors.IsNotFound(err) {
-		r.events.Eventf(instance, `Normal`, `Info`, "Creating swarm AddRoleToInstanceProfile")
-		err = r.Create(context.TODO(), addRoleToInstanceProfile)
-		if err != nil {
-			r.events.Eventf(instance, `Normal`, `Info`, "Error in creating swarm AddRoleToInstanceProfile %s", err.Error())
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-	r.events.Eventf(instance, `Normal`, `Info`, "Swarm AddRoleToInstanceProfile is present")
-	err = r.Update(context.TODO(), addRoleToInstanceProfile)
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(addRoleToInstanceProfile.Spec, addRoleToInstanceProfileFound.Spec) {
-		addRoleToInstanceProfileFound.Spec = addRoleToInstanceProfile.Spec
-		r.events.Eventf(instance, `Normal`, `Info`, "Updating swarm AddRoleToInstanceProfile")
-		err = r.Update(context.TODO(), addRoleToInstanceProfileFound)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
-	/// END ATTACH ROLE TO INSTANCE PROFILE
 
 	/// manager ec2 instances
 
