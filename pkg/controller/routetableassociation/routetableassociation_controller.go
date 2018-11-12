@@ -176,12 +176,12 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 				if aerr, ok := ierr.(awserr.Error); ok {
 					switch aerr.Code() {
 					default:
-						fmt.Println(aerr.Error())
+						//fmt.Println(aerr.Error())
 					}
 				} else {
 					// Print the error, cast err to awserr.Error to get the Code and
 					// Message from an error.
-					fmt.Println(ierr.Error())
+					//fmt.Println(ierr.Error())
 				}
 
 			} else if disassociateOutput == nil {
