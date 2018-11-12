@@ -1201,7 +1201,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 		"manager0", "manager1", "manager2", "manager3", "manager4", "manager5",
 	}
 	for managerNum := 1; managerNum <= instance.Spec.NumManagers; managerNum++ {
-		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Manager ", managerNum)
+		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Manager %s", managerNum)
 		manager := &eccv1alpha1.EC2Instance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      (instance.Name + managerNames[managerNum]),
@@ -1269,7 +1269,7 @@ func (r *ReconcileDockerSwarm) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	for workerNum := 1; workerNum <= instance.Spec.NumWorkers; workerNum++ {
-		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Worker ", workerNum)
+		r.events.Eventf(instance, `Normal`, `Info`, "Defining swarm Worker %s", workerNum)
 		worker := &eccv1alpha1.EC2Instance{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      (instance.Name + workerNames[workerNum]),
