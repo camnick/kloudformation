@@ -129,7 +129,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 
 		routeTableId = *createOutput.RouteTable.RouteTableId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routeTableId)
-		instance.ObjectMeta.Annotations = make(map[string]string) 
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`routeTableId`] = routeTableId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routeTables.ecc.aws.gotopple.com`)
 
@@ -161,12 +161,12 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 				if aerr, ok := ierr.(awserr.Error); ok {
 					switch aerr.Code() {
 					default:
-						//fmt.Println(aerr.Error())
+						r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s,` aerr.Error())
 					}
 				} else {
 					// Print the error, cast err to awserr.Error to get the Code and
 					// Message from an error.
-					//fmt.Println(ierr.Error())
+					r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s,` ierr.Error())
 				}
 			} else if deleteOutput == nil {
 				// Send an appropriate event that has been annotated
@@ -224,12 +224,12 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
 				default:
-					//fmt.Println(aerr.Error())
+					r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s,` aerr.Error())
 				}
 			} else {
 				// Print the error, cast err to awserr.Error to get the Code and
 				// Message from an error.
-				//fmt.Println(err.Error())
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s,` ierr.Error())
 			}
 
 			return reconcile.Result{}, err
