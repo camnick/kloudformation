@@ -131,7 +131,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 
 		ec2SecurityGroupId = *createOutput.GroupId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2SecurityGroup (%s)", ec2SecurityGroupId)
-		instance.ObjectMeta.Annotations = make(map[string]string) 
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`ec2SecurityGroupId`] = ec2SecurityGroupId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2securitygroups.ecc.aws.gotopple.com`)
 
@@ -258,16 +258,6 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2SecurityGroup and removed finalizers")
 	}
 
-	// START EC2 KEYPAIR
-
-	// END EC2 KEYPAIR
-
-	/// IAM
-	/// Policy
-	/// Role
-	/// Instance Profile
-	/// Attach Policy to Role
-	/// Attach Role to Instance Profile
 
 	return reconcile.Result{}, nil
 }
