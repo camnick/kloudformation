@@ -128,7 +128,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 	// if absent then create
 	routeCreated, ok := instance.ObjectMeta.Annotations[`routeCreated`]
 	if !ok {
-		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Route in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRoute(&ec2.CreateRouteInput{
 			DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
@@ -150,6 +149,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route and added to RouteTable (%s)", routeTable.ObjectMeta.Annotations[`routeTableId`])
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`associatedRouteTableId`] = routeTable.ObjectMeta.Annotations[`routeTableId`]
 		instance.ObjectMeta.Annotations[`routeCreated`] = routeCreated
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)

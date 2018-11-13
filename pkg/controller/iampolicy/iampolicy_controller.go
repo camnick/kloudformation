@@ -103,7 +103,6 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 	// if absent then create
 	iamPolicyId, ok := instance.ObjectMeta.Annotations[`iamPolicyId`]
 	if !ok {
-		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS IAMPolicy in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreatePolicy(&iam.CreatePolicyInput{
 			PolicyDocument: aws.String(instance.Spec.PolicyDocument),
@@ -123,6 +122,7 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		iamPolicyArn := *createOutput.Policy.Arn
 		iamPolicyAwsName := *createOutput.Policy.PolicyName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMPolicy (%s)", iamPolicyId)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`iamPolicyId`] = iamPolicyId
 		instance.ObjectMeta.Annotations[`iamPolicyArn`] = iamPolicyArn
 		instance.ObjectMeta.Annotations[`iamPolicyAwsName`] = iamPolicyAwsName

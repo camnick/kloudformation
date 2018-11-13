@@ -103,7 +103,6 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 	// if absent then create
 	roleId, ok := instance.ObjectMeta.Annotations[`awsRoleId`]
 	if !ok {
-		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Role in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRole(&iam.CreateRoleInput{
 			AssumeRolePolicyDocument: aws.String(instance.Spec.AssumeRolePolicyDocument),
@@ -124,6 +123,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		roleArn := *createOutput.Role.Arn
 		roleName := *createOutput.Role.RoleName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Role (%s)", roleId)
+		instance.ObjectMeta.Annotations = make(map[string]string) 
 		instance.ObjectMeta.Annotations[`awsRoleId`] = roleId
 		instance.ObjectMeta.Annotations[`awsRoleArn`] = roleArn
 		instance.ObjectMeta.Annotations[`awsRoleName`] = roleName

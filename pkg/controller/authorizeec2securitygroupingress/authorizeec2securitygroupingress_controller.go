@@ -116,7 +116,6 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 	// if absent then create
 	ingressAuthorized, ok := instance.ObjectMeta.Annotations[`ingressAuthorized`]
 	if !ok {
-		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS AuthorizeEC2SecurityGroupIngress in %s", *r.sess.Config.Region)
 		authorizeOutput, err := svc.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
 			CidrIp:     aws.String(instance.Spec.SourceCidrIp),
@@ -134,6 +133,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		}
 		ingressAuthorized = "yes"
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS AuthorizeEC2SecurityGroupIngress for EC2SecurityGroup (%s)", ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`])
+		instance.ObjectMeta.Annotations = make(map[string]string) 
 		instance.ObjectMeta.Annotations[`ingressAuthorized`] = ingressAuthorized
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
 

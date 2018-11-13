@@ -103,7 +103,6 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 	// if absent then create
 	iamInstanceProfileId, ok := instance.ObjectMeta.Annotations[`iamInstanceProfileId`]
 	if !ok {
-		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS IAMInstanceProfile in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateInstanceProfile(&iam.CreateInstanceProfileInput{
 			Path:                aws.String(instance.Spec.Path),
@@ -121,6 +120,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 		iamInstanceProfileArn := *createOutput.InstanceProfile.Arn
 		iamInstanceProfileName := *createOutput.InstanceProfile.InstanceProfileName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMInstanceProfile (%s)", iamInstanceProfileId)
+		instance.ObjectMeta.Annotations = make(map[string]string) 
 		instance.ObjectMeta.Annotations[`iamInstanceProfileId`] = iamInstanceProfileId
 		instance.ObjectMeta.Annotations[`iamInstanceProfileArn`] = iamInstanceProfileArn
 		instance.ObjectMeta.Annotations[`awsInstanceProfileName`] = iamInstanceProfileName

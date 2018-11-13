@@ -115,7 +115,6 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 	// if absent then create
 	routeTableId, ok := instance.ObjectMeta.Annotations[`routeTableId`]
 	if !ok {
-		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTable in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRouteTable(&ec2.CreateRouteTableInput{
 			VpcId: aws.String(vpc.ObjectMeta.Annotations[`vpcid`]),
@@ -130,6 +129,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 
 		routeTableId = *createOutput.RouteTable.RouteTableId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routeTableId)
+		instance.ObjectMeta.Annotations = make(map[string]string) 
 		instance.ObjectMeta.Annotations[`routeTableId`] = routeTableId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routeTables.ecc.aws.gotopple.com`)
 

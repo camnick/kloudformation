@@ -115,7 +115,6 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// if absent then create
 	eipAllocationId, ok := instance.ObjectMeta.Annotations[`eipAllocationId`]
 	if !ok {
-		instance.ObjectMeta.Annotations = make(map[string]string) // This keeps the controller from crashing when annotation later on
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EIP in %s", *r.sess.Config.Region)
 		createOutput, err := svc.AllocateAddress(&ec2.AllocateAddressInput{
 			Domain: aws.String("vpc"),
@@ -131,6 +130,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		eipAllocationId = *createOutput.AllocationId
 		eipPublicIp := *createOutput.PublicIp
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EIP %s, (%s)", eipPublicIp, eipAllocationId)
+		instance.ObjectMeta.Annotations = make(map[string]string) 
 		instance.ObjectMeta.Annotations[`eipAllocationId`] = eipAllocationId
 		instance.ObjectMeta.Annotations[`eipPublicIp`] = eipPublicIp
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `eips.ecc.aws.gotopple.com`)
