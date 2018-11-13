@@ -161,12 +161,12 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 				if aerr, ok := ierr.(awserr.Error); ok {
 					switch aerr.Code() {
 					default:
-						r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s,` aerr.Error())
+						r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s`, aerr.Error())
 					}
 				} else {
 					// Print the error, cast err to awserr.Error to get the Code and
 					// Message from an error.
-					r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s,` ierr.Error())
+					r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s`, ierr.Error())
 				}
 			} else if deleteOutput == nil {
 				// Send an appropriate event that has been annotated
@@ -224,12 +224,12 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
 				default:
-					r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s,` aerr.Error())
+					r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s`, aerr.Error())
 				}
 			} else {
 				// Print the error, cast err to awserr.Error to get the Code and
 				// Message from an error.
-				r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s,` ierr.Error())
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s`, ierr.Error())
 			}
 
 			return reconcile.Result{}, err
