@@ -224,12 +224,12 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
 				default:
-					fmt.Println(aerr.Error())
+					//fmt.Println(aerr.Error())
 				}
 			} else {
 				// Print the error, cast err to awserr.Error to get the Code and
 				// Message from an error.
-				fmt.Println(err.Error())
+				//fmt.Println(err.Error())
 			}
 
 			return reconcile.Result{}, err
