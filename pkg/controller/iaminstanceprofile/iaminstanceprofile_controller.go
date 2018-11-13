@@ -120,7 +120,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 		iamInstanceProfileArn := *createOutput.InstanceProfile.Arn
 		iamInstanceProfileName := *createOutput.InstanceProfile.InstanceProfileName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMInstanceProfile (%s)", iamInstanceProfileId)
-		instance.ObjectMeta.Annotations = make(map[string]string) 
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`iamInstanceProfileId`] = iamInstanceProfileId
 		instance.ObjectMeta.Annotations[`iamInstanceProfileArn`] = iamInstanceProfileArn
 		instance.ObjectMeta.Annotations[`awsInstanceProfileName`] = iamInstanceProfileName

@@ -144,7 +144,7 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 
 		ec2VolumeAttachmentResponse = *attachOutput.State
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2VolumeAttachment for VolumeId %s ", volume.ObjectMeta.Annotations[`volumeId`])
-		instance.ObjectMeta.Annotations = make(map[string]string) 
+		instance.ObjectMeta.Annotations = make(map[string]string)
 
 		// Will appear to be 'attaching' later on can have this update to 'attached'
 		instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`] = ec2VolumeAttachmentResponse

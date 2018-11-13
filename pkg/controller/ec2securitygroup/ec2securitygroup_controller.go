@@ -258,6 +258,5 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2SecurityGroup and removed finalizers")
 	}
 
-
 	return reconcile.Result{}, nil
 }

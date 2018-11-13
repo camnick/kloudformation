@@ -130,7 +130,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		eipAllocationId = *createOutput.AllocationId
 		eipPublicIp := *createOutput.PublicIp
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EIP %s, (%s)", eipPublicIp, eipAllocationId)
-		instance.ObjectMeta.Annotations = make(map[string]string) 
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`eipAllocationId`] = eipAllocationId
 		instance.ObjectMeta.Annotations[`eipPublicIp`] = eipPublicIp
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `eips.ecc.aws.gotopple.com`)

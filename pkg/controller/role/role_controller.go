@@ -123,7 +123,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		roleArn := *createOutput.Role.Arn
 		roleName := *createOutput.Role.RoleName
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Role (%s)", roleId)
-		instance.ObjectMeta.Annotations = make(map[string]string) 
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`awsRoleId`] = roleId
 		instance.ObjectMeta.Annotations[`awsRoleArn`] = roleArn
 		instance.ObjectMeta.Annotations[`awsRoleName`] = roleName
