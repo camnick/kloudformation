@@ -254,6 +254,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 
 		//add finalizers to each resource that the instance is dependent on
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2KeyPair, Namespace: instance.Namespace}, ec2KeyPair)
+		// add error check later on
 		ec2KeyPair.ObjectMeta.Finalizers = append(ec2KeyPair.ObjectMeta.Finalizers, (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
 		err = r.Update(context.TODO(), ec2KeyPair)
 		if err != nil {
