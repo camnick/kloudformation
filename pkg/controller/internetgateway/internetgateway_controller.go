@@ -115,7 +115,6 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 	// if absent then create
 	internetGatewayId, ok := instance.ObjectMeta.Annotations[`internetGatewayId`]
 	if !ok {
-
 		// log intention to attempt, then attempt
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS InternetGateway in %s", *r.sess.Config.Region)
 		createGatewayOutput, err := svc.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
@@ -129,9 +128,14 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 			return reconcile.Result{}, fmt.Errorf(`CreateInternetGatewayOutput was nil`)
 		}
 
-		// save the output into an id for the gatway, note the success, and then save the id in the object annotations
+		if createGatewayOutput.InternetGateway.InternetGatewayId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createGatewayOutput.InternetGateway.InternetGatewayId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createGatewayOutput.InternetGateway.InternetGatewayId was nil`)
+		}
 		internetGatewayId = *createGatewayOutput.InternetGateway.InternetGatewayId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS InternetGateway (%s)", internetGatewayId)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`internetGatewayId`] = internetGatewayId
 
 		//append finalizer now that everything is done

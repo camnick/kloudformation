@@ -141,8 +141,14 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, fmt.Errorf(`associateOutput was nil`)
 		}
 
+		if associateOutput.AssociationId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `associateOutput.AssociationId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`associateOutput.AssociationId was nil`)
+		}
 		eipAssociationId = *associateOutput.AssociationId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EIP Association (%s)", eipAssociationId)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`eipAssociationId`] = eipAssociationId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `eipassociations.ecc.aws.gotopple.com`)
 

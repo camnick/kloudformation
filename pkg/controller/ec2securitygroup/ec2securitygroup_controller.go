@@ -129,8 +129,14 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 			return reconcile.Result{}, fmt.Errorf(`CreateSecurityGroupOutput was nil`)
 		}
 
+		if createOutput.GroupId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.GroupId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.GroupId was nil`)
+		}
 		ec2SecurityGroupId = *createOutput.GroupId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2SecurityGroup (%s)", ec2SecurityGroupId)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`ec2SecurityGroupId`] = ec2SecurityGroupId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2securitygroups.ecc.aws.gotopple.com`)
 
@@ -184,8 +190,32 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 			return reconcile.Result{}, err
 		}
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		// Make sure that there are tags to add before attempting to add them.
+		if len(instance.Spec.Tags) >= 1 {
+			// Tag the new security group
+			ts := []*ec2.Tag{}
+			for _, t := range instance.Spec.Tags {
+				ts = append(ts, &ec2.Tag{
+					Key:   aws.String(t.Key),
+					Value: aws.String(t.Value),
+				})
+			}
+			tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
+				Resources: []*string{aws.String(ec2SecurityGroupId)},
+				Tags:      ts,
+			})
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				return reconcile.Result{}, err
+			}
+			if tagOutput == nil {
+				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
+			}
+			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+		}
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `ec2securitygroups.ecc.aws.gotopple.com` {
@@ -193,6 +223,13 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
+		}
+
+		// need to add check for other Finalizers
+
+		if len(instance.ObjectMeta.Finalizers) != 0 {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
+			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
 		}
 
 		// must delete

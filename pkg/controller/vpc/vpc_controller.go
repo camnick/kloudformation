@@ -81,6 +81,7 @@ type ReconcileVPC struct {
 // and what is in the VPC.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=vpcs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=swarm.aws.gotopple.com,resources=dockerswarms,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the VPC instance
 	instance := &eccv1alpha1.VPC{}
@@ -106,15 +107,21 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 			InstanceTenancy: aws.String(instance.Spec.InstanceTenancy),
 		})
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `Create failed: %s`, err.Error())
 			return reconcile.Result{}, err
 		}
 		if createOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`CreateVPCOutput was nil`)
 		}
 
+		if createOutput.Vpc.VpcId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Vpc.VpcId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Vpc.VpcId was nil`)
+		}
 		vpcid = *createOutput.Vpc.VpcId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS VPC (%s)", vpcid)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`vpcid`] = vpcid
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `vpcs.ecc.aws.gotopple.com`)
 

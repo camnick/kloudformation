@@ -141,8 +141,14 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 			return reconcile.Result{}, fmt.Errorf(`AssociateOutput was nil`)
 		}
 
+		if associateOutput.AssociationId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `associateOutput.AssociationId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`associateOutput.AssociationId was nil`)
+		}
 		routeTableAssociationId = *associateOutput.AssociationId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTableAssociation (%s)", routeTableAssociationId)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`routeTableAssociationId`] = routeTableAssociationId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routetableassociations.ecc.aws.gotopple.com`)
 
@@ -175,12 +181,13 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 				if aerr, ok := ierr.(awserr.Error); ok {
 					switch aerr.Code() {
 					default:
-						fmt.Println(aerr.Error())
+						r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s`, aerr.Error())
+
 					}
 				} else {
 					// Print the error, cast err to awserr.Error to get the Code and
 					// Message from an error.
-					fmt.Println(ierr.Error())
+					r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s`, ierr.Error())
 				}
 
 			} else if disassociateOutput == nil {

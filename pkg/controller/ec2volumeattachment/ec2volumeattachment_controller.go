@@ -142,8 +142,13 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 			return reconcile.Result{}, fmt.Errorf(`EC2VolumeAttachmentOutput was nil`)
 		}
 
+		if attachOutput.State == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `attachOutput.State was nil`)
+			return reconcile.Result{}, fmt.Errorf(`attachOutput.State was nil`)
+		}
 		ec2VolumeAttachmentResponse = *attachOutput.State
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2VolumeAttachment for VolumeId %s ", volume.ObjectMeta.Annotations[`volumeId`])
+		instance.ObjectMeta.Annotations = make(map[string]string)
 
 		// Will appear to be 'attaching' later on can have this update to 'attached'
 		instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`] = ec2VolumeAttachmentResponse

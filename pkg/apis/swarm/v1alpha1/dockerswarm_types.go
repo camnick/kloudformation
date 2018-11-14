@@ -23,20 +23,18 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// AuthorizeEC2SecurityGroupIngressSpec defines the desired state of AuthorizeEC2SecurityGroupIngress
-type AuthorizeEC2SecurityGroupIngressSpec struct {
-	RuleName             string `json:"ruleName"`
-	SourceCidrIp         string `json:"sourceCidrIp"`
-	EC2SecurityGroupName string `json:"ec2SecurityGroupName"`
-	FromPort             int64  `json:"fromPort"`
-	ToPort               int64  `json:"toPort"`
-	IpProtocol           string `json:"ipProtocol"`
+// DockerSwarmSpec defines the desired state of DockerSwarm
+type DockerSwarmSpec struct {
+	NumManagers int    `json:"numManagers"`
+	NumWorkers  int    `json:"numWorkers"`
+	ManagerSize string `json:"managerSize"`
+	WorkerSize  string `json:"workerSize"`
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-// AuthorizeEC2SecurityGroupIngressStatus defines the observed state of AuthorizeEC2SecurityGroupIngress
-type AuthorizeEC2SecurityGroupIngressStatus struct {
+// DockerSwarmStatus defines the observed state of DockerSwarm
+type DockerSwarmStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -44,25 +42,25 @@ type AuthorizeEC2SecurityGroupIngressStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// AuthorizeEC2SecurityGroupIngress is the Schema for the authorizeec2securitygroupingresses API
+// DockerSwarm is the Schema for the dockerswarms API
 // +k8s:openapi-gen=true
-type AuthorizeEC2SecurityGroupIngress struct {
+type DockerSwarm struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AuthorizeEC2SecurityGroupIngressSpec   `json:"spec,omitempty"`
-	Status AuthorizeEC2SecurityGroupIngressStatus `json:"status,omitempty"`
+	Spec   DockerSwarmSpec   `json:"spec,omitempty"`
+	Status DockerSwarmStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// AuthorizeEC2SecurityGroupIngressList contains a list of AuthorizeEC2SecurityGroupIngress
-type AuthorizeEC2SecurityGroupIngressList struct {
+// DockerSwarmList contains a list of DockerSwarm
+type DockerSwarmList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AuthorizeEC2SecurityGroupIngress `json:"items"`
+	Items           []DockerSwarm `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&AuthorizeEC2SecurityGroupIngress{}, &AuthorizeEC2SecurityGroupIngressList{})
+	SchemeBuilder.Register(&DockerSwarm{}, &DockerSwarmList{})
 }

@@ -27,12 +27,15 @@ spec:
               type: integer
             ipProtocol:
               type: string
+            ruleName:
+              type: string
             sourceCidrIp:
               type: string
             toPort:
               format: int64
               type: integer
           required:
+          - ruleName
           - sourceCidrIp
           - fromPort
           - toPort

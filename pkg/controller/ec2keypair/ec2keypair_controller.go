@@ -140,6 +140,10 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, fmt.Errorf(`CreateEC2KeyPairOutput was nil`)
 		}
 
+		if createOutput.KeyName == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.KeyName was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.KeyName was nil`)
+		}
 		awsKeyName = *createOutput.KeyName
 		privateKeyMaterial = createOutput.KeyMaterial
 		//update the keymaterial field in the keySecret struct with the new privateKeyMaterial value
@@ -158,6 +162,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
 
@@ -255,6 +260,13 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
+
+		//check for finalizers not placed by the controller
+		if len(instance.ObjectMeta.Finalizers) != 0 {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2KeyPair with remaining finalizers")
+			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2KeyPair with remaining finalizers`)
+		}
+
 		// delete the secret
 		err = r.Delete(context.TODO(), keySecret)
 		if err != nil {

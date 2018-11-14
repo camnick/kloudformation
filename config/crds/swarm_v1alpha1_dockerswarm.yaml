@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: ec2securitygroups.ecc.aws.gotopple.com
+  name: dockerswarms.swarm.aws.gotopple.com
 spec:
-  group: ecc.aws.gotopple.com
+  group: swarm.aws.gotopple.com
   names:
-    kind: EC2SecurityGroup
-    plural: ec2securitygroups
+    kind: DockerSwarm
+    plural: dockerswarms
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -22,26 +22,21 @@ spec:
           type: object
         spec:
           properties:
-            description:
+            managerSize:
               type: string
-            tags:
-              items:
-                properties:
-                  key:
-                    type: string
-                  value:
-                    type: string
-                required:
-                - key
-                - value
-                type: object
-              type: array
-            vpcName:
+            numManagers:
+              format: int64
+              type: integer
+            numWorkers:
+              format: int64
+              type: integer
+            workerSize:
               type: string
           required:
-          - vpcName
-          - description
-          - tags
+          - numManagers
+          - numWorkers
+          - managerSize
+          - workerSize
           type: object
         status:
           type: object

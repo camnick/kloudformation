@@ -8,3 +8,6 @@ spec:
   ec2SecurityGroupName: sample-securitygroup
   vpcName: example-network
   description: an aws ec2 security group
+  tags:
+    - key: Name
+      value: sample-ec2-securitygroup

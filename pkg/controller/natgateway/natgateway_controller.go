@@ -156,8 +156,14 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, fmt.Errorf(`CreateNatGatewayOutput was nil`)
 		}
 
+		if createOutput.NatGateway.NatGatewayId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.NatGateway.NatGatewayId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.NatGateway.NatGatewayId was nil`)
+		}
 		natGatewayId = *createOutput.NatGateway.NatGatewayId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS NATGateway (%s)", natGatewayId)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`natGatewayId`] = natGatewayId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `natgateways.ecc.aws.gotopple.com`)
 		err = r.Update(context.TODO(), instance)

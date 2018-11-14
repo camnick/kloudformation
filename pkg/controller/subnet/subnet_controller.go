@@ -132,8 +132,14 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 			return reconcile.Result{}, fmt.Errorf(`CreateSubnetOutput was nil`)
 		}
 
+		if createOutput.Subnet.SubnetId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Subnet.SubnetId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Subnet.SubnetId was nil`)
+		}
 		subnetid = *createOutput.Subnet.SubnetId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Subnet (%s)", subnetid)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`subnetid`] = subnetid
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `subnets.ecc.aws.gotopple.com`)
 
@@ -212,6 +218,7 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `subnets.ecc.aws.gotopple.com` {
@@ -219,6 +226,12 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
+		}
+
+		//check for finalizers placed by other controllers first
+		if len(instance.ObjectMeta.Finalizers) != 0 {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
+			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
 		}
 
 		// must delete

@@ -5,6 +5,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: authorizeec2securitygroupingress-sample
 spec:
+  ruleName: testrule
   sourceCidrIp: 0.0.0.0/0
   ec2SecurityGroupName: ec2securitygroup-sample
   fromPort: 22

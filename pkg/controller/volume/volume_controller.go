@@ -128,8 +128,14 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 			return reconcile.Result{}, fmt.Errorf(`CreateVolumeOutput was nil`)
 		}
 
+		if createOutput.VolumeId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.VolumeId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.VolumeId was nil`)
+		}
 		volumeId = *createOutput.VolumeId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Volume (%s)", volumeId)
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`volumeId`] = volumeId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `volumes.ecc.aws.gotopple.com`)
 

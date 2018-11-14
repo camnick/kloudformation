@@ -101,7 +101,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 
 	// get the RoleId out of the annotations
 	// if absent then create
-	roleId, ok := instance.ObjectMeta.Annotations[`roleId`]
+	roleId, ok := instance.ObjectMeta.Annotations[`awsRoleId`]
 	if !ok {
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Role in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRole(&iam.CreateRoleInput{
@@ -119,12 +119,28 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			return reconcile.Result{}, fmt.Errorf(`CreateRoleOutput was nil`)
 		}
 
+		if createOutput.Role.RoleId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Role.RoleId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Role.RoleId was nil`)
+		}
 		roleId = *createOutput.Role.RoleId
+
+		if createOutput.Role.Arn == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Role.Arn was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Role.Arn was nil`)
+		}
 		roleArn := *createOutput.Role.Arn
+
+		if createOutput.Role.RoleName == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Role.RoleName was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Role.RoleName was nil`)
+		}
 		roleName := *createOutput.Role.RoleName
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Role (%s)", roleId)
-		instance.ObjectMeta.Annotations[`roleId`] = roleId
-		instance.ObjectMeta.Annotations[`roleArn`] = roleArn
+		instance.ObjectMeta.Annotations = make(map[string]string)
+		instance.ObjectMeta.Annotations[`awsRoleId`] = roleId
+		instance.ObjectMeta.Annotations[`awsRoleArn`] = roleArn
 		instance.ObjectMeta.Annotations[`awsRoleName`] = roleName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `roles.ecc.aws.gotopple.com`)
 

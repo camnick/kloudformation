@@ -19,7 +19,43 @@ rules:
 - apiGroups:
   - ecc.aws.gotopple.com
   resources:
-  - authorizeec2securitygroupingresss
+  - authorizeec2securitygroupingress
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - vpcs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - swarm.aws.gotopple.com
+  resources:
+  - dockerswarms
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ecc.aws.gotopple.com
+  resources:
+  - subnets
   verbs:
   - get
   - list
@@ -282,6 +318,18 @@ rules:
   - ecc.aws.gotopple.com
   resources:
   - vpcs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - swarm.aws.gotopple.com
+  resources:
+  - dockerswarms
   verbs:
   - get
   - list

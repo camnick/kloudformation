@@ -1,0 +1,11 @@
+apiVersion: swarm.aws.gotopple.com/v1alpha1
+kind: DockerSwarm
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: dockerswarm-sample
+spec:
+  numManagers: 3
+  numWorkers: 5
+  managerSize: t2.micro
+  workerSize: t2.micro

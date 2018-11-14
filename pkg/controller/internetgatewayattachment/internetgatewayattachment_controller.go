@@ -141,6 +141,8 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 			return reconcile.Result{}, fmt.Errorf(`internetGatewayAttached was nil`)
 		}
 
+		internetGatewayAttached = "yes"
+		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`internetGatewayAttached`] = internetGatewayAttached
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Internet Gateway Attachment with VPC (%s) and InternetGateway (%s) ", vpc.ObjectMeta.Annotations[`vpcid`], internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
 		instance.ObjectMeta.Annotations[`attachedVpcId`] = vpc.ObjectMeta.Annotations[`vpcid`]
