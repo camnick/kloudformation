@@ -166,19 +166,41 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			r.events.Eventf(instance, `Normal`, `CreateFailure`, "Reservation was nil")
 			return reconcile.Result{}, fmt.Errorf(`Reservation was nil`)
 		}
-		/*
-			if len(reservation.Instances[0].InstanceId) < 1 {
-				return reconcile.Result{}, fmt.Errorf(`Reservation was zero length.`)
-			}*/
 		if reservation.Instances[0].InstanceId == nil {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, `reservation.Instances[0].InstanceId was nil`)
 			return reconcile.Result{}, fmt.Errorf(`reservation.Instances[0].InstanceId was nil`)
 		}
+
 		ec2InstanceId = *reservation.Instances[0].InstanceId
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2Instance (%s)", ec2InstanceId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`ec2InstanceId`] = ec2InstanceId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2instances.ecc.aws.gotopple.com`)
+
+		//add finalizers to each resource that the instance is dependent on
+		ec2KeyPair.ObjectMeta.Finalizers = append(ec2KeyPair.ObjectMeta.Finalizers, (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
+		err = r.Update(context.TODO(), ec2KeyPair)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to add finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to EC2 Key Pair")
+
+		ec2SecurityGroup.ObjectMeta.Finalizers = append(ec2SecurityGroup.ObjectMeta.Finalizers, (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
+		err = r.Update(context.TODO(), ec2SecurityGroup)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to add finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to EC2 Security Group")
+
+		subnet.ObjectMeta.Finalizers = append(subnet.ObjectMeta.Finalizers, (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
+		err = r.Update(context.TODO(), subnet)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to add finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to AWS Subnet")
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -256,44 +278,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
 
-		//add finalizers to each resource that the instance is dependent on
-		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2KeyPair, Namespace: instance.Namespace}, ec2KeyPair)
-		// add error check later on
-		ec2KeyPair.ObjectMeta.Finalizers = append(ec2KeyPair.ObjectMeta.Finalizers, (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
-		err = r.Update(context.TODO(), ec2KeyPair)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to add finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to EC2 Key Pair")
-
-		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
-		ec2SecurityGroup.ObjectMeta.Finalizers = append(ec2SecurityGroup.ObjectMeta.Finalizers, (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
-		err = r.Update(context.TODO(), ec2SecurityGroup)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to add finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to EC2 Security Group")
-
-		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
-		subnet.ObjectMeta.Finalizers = append(subnet.ObjectMeta.Finalizers, (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
-		err = r.Update(context.TODO(), subnet)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to add finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to AWS Subnet")
-
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `ec2instances.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
-			}
-		}
 
 		// must delete
 		_, err = svc.TerminateInstances(&ec2.TerminateInstancesInput{
@@ -319,16 +304,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			}
 		}
 
-		// after a successful delete update the resource with the removed finalizer
-		err = r.Update(context.TODO(), instance)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2Instance and removed finalizers")
-
 		// remove finalizer from instances subnet
-		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 		for i, f := range subnet.ObjectMeta.Finalizers {
 			if f == (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`) {
 				subnet.ObjectMeta.Finalizers = append(
@@ -336,14 +312,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 					subnet.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
-		err = r.Update(context.TODO(), subnet)
-		if err != nil {
-			r.events.Eventf(subnet, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Eventf(subnet, `Normal`, `Deleted`, "Deleted finalizer: %s", (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
-
-		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2KeyPair, Namespace: instance.Namespace}, ec2KeyPair)
+		// remove finalizer from instance keypair
 		for i, f := range ec2KeyPair.ObjectMeta.Finalizers {
 			if f == (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`) {
 				ec2KeyPair.ObjectMeta.Finalizers = append(
@@ -351,14 +320,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 					ec2KeyPair.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
-		err = r.Update(context.TODO(), ec2KeyPair)
-		if err != nil {
-			r.events.Eventf(ec2KeyPair, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Eventf(ec2KeyPair, `Normal`, `Deleted`, "Deleted finalizer: %s", (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
-
-		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
+		// remove finalizer from instance securitygroup
 		for i, f := range ec2SecurityGroup.ObjectMeta.Finalizers {
 			if f == (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`) {
 				ec2SecurityGroup.ObjectMeta.Finalizers = append(
@@ -366,12 +328,44 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 					ec2SecurityGroup.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `ec2instances.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
+		}
+
+		err = r.Update(context.TODO(), subnet)
+		if err != nil {
+			r.events.Eventf(subnet, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Eventf(subnet, `Normal`, `Deleted`, "Deleted finalizer: %s", (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
+
+		err = r.Update(context.TODO(), ec2KeyPair)
+		if err != nil {
+			r.events.Eventf(ec2KeyPair, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Eventf(ec2KeyPair, `Normal`, `Deleted`, "Deleted finalizer: %s", (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
+
 		err = r.Update(context.TODO(), ec2SecurityGroup)
 		if err != nil {
 			r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		r.events.Eventf(ec2SecurityGroup, `Normal`, `Deleted`, "Deleted finalizer: %s", (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
+
+		// after a successful delete update the resource with the removed finalizer
+		err = r.Update(context.TODO(), instance)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2Instance and removed finalizers")
 
 	}
 
