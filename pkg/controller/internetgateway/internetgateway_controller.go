@@ -128,8 +128,12 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 			return reconcile.Result{}, fmt.Errorf(`CreateInternetGatewayOutput was nil`)
 		}
 
-		// save the output into an id for the gatway, note the success, and then save the id in the object annotations
+		if createGatewayOutput.InternetGateway.InternetGatewayId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createGatewayOutput.InternetGateway.InternetGatewayId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createGatewayOutput.InternetGateway.InternetGatewayId was nil`)
+		}
 		internetGatewayId = *createGatewayOutput.InternetGateway.InternetGatewayId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS InternetGateway (%s)", internetGatewayId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`internetGatewayId`] = internetGatewayId

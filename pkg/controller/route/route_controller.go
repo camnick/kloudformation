@@ -148,6 +148,11 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			return reconcile.Result{}, fmt.Errorf(`CreateRouteOutput was nil`)
 		}
 
+		if createOutput.Return == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.return was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.return was nil`)
+		}
+		routeCreated = "yes"
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route and added to RouteTable (%s)", routeTable.ObjectMeta.Annotations[`routeTableId`])
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`associatedRouteTableId`] = routeTable.ObjectMeta.Annotations[`routeTableId`]

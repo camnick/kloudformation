@@ -114,7 +114,12 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 			return reconcile.Result{}, fmt.Errorf(`CreateVPCOutput was nil`)
 		}
 
+		if createOutput.Vpc.VpcId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Vpc.VpcId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Vpc.VpcId was nil`)
+		}
 		vpcid = *createOutput.Vpc.VpcId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS VPC (%s)", vpcid)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`vpcid`] = vpcid

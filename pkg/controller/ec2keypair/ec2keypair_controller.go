@@ -140,6 +140,10 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, fmt.Errorf(`CreateEC2KeyPairOutput was nil`)
 		}
 
+		if createOutput.KeyName == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.KeyName was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.KeyName was nil`)
+		}
 		awsKeyName = *createOutput.KeyName
 		privateKeyMaterial = createOutput.KeyMaterial
 		//update the keymaterial field in the keySecret struct with the new privateKeyMaterial value

@@ -129,7 +129,12 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 			return reconcile.Result{}, fmt.Errorf(`CreateSecurityGroupOutput was nil`)
 		}
 
+		if createOutput.GroupId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.GroupId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.GroupId was nil`)
+		}
 		ec2SecurityGroupId = *createOutput.GroupId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2SecurityGroup (%s)", ec2SecurityGroupId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`ec2SecurityGroupId`] = ec2SecurityGroupId

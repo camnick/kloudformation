@@ -116,9 +116,24 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 			return reconcile.Result{}, fmt.Errorf(`CreateInstanceProfileOutput was nil`)
 		}
 
+		if createOutput.InstanceProfile.InstanceProfileId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.InstanceProfile.InstanceProfileId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.InstanceProfile.InstanceProfileId was nil`)
+		}
 		iamInstanceProfileId = *createOutput.InstanceProfile.InstanceProfileId
+
+		if createOutput.InstanceProfile.Arn == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.InstanceProfile.Arn was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.InstanceProfile.Arn was nil`)
+		}
 		iamInstanceProfileArn := *createOutput.InstanceProfile.Arn
+
+		if createOutput.InstanceProfile.InstanceProfileName == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.InstanceProfile.InstanceProfileName was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.InstanceProfile.InstanceProfileName was nil`)
+		}
 		iamInstanceProfileName := *createOutput.InstanceProfile.InstanceProfileName
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMInstanceProfile (%s)", iamInstanceProfileId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`iamInstanceProfileId`] = iamInstanceProfileId

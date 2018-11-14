@@ -118,9 +118,24 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 			return reconcile.Result{}, fmt.Errorf(`CreatePolicyOutput was nil`)
 		}
 
+		if createOutput.Policy.PolicyId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.PolicyId.PolicyId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Policy.PolicyId was nil`)
+		}
 		iamPolicyId = *createOutput.Policy.PolicyId
+
+		if createOutput.Policy.Arn == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Policy.Arn was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Policy.Arn was nil`)
+		}
 		iamPolicyArn := *createOutput.Policy.Arn
+
+		if createOutput.Policy.PolicyName == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Policy.PolicyName was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Policy.PolicyName was nil`)
+		}
 		iamPolicyAwsName := *createOutput.Policy.PolicyName
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMPolicy (%s)", iamPolicyId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`iamPolicyId`] = iamPolicyId

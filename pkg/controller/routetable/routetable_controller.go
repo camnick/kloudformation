@@ -127,7 +127,12 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, fmt.Errorf(`CreateRouteTableOutput was nil`)
 		}
 
+		if createOutput.RouteTable.RouteTableId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.RouteTable.RouteTableId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.RouteTable.RouteTableId was nil`)
+		}
 		routeTableId = *createOutput.RouteTable.RouteTableId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routeTableId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`routeTableId`] = routeTableId

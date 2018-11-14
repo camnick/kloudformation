@@ -141,7 +141,12 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 			return reconcile.Result{}, fmt.Errorf(`AssociateOutput was nil`)
 		}
 
+		if associateOutput.AssociationId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `associateOutput.AssociationId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`associateOutput.AssociationId was nil`)
+		}
 		routeTableAssociationId = *associateOutput.AssociationId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTableAssociation (%s)", routeTableAssociationId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`routeTableAssociationId`] = routeTableAssociationId

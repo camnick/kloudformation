@@ -132,7 +132,12 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 			return reconcile.Result{}, fmt.Errorf(`CreateSubnetOutput was nil`)
 		}
 
+		if createOutput.Subnet.SubnetId == nil {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `createOutput.Subnet.SubnetId was nil`)
+			return reconcile.Result{}, fmt.Errorf(`createOutput.Subnet.SubnetId was nil`)
+		}
 		subnetid = *createOutput.Subnet.SubnetId
+
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Subnet (%s)", subnetid)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`subnetid`] = subnetid
