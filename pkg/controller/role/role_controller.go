@@ -200,8 +200,8 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
 			if instance.ObjectMeta.Finalizers[i] != `roles.iam.aws.gotopple.com` {
-				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
-				return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Role with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the Role with remaining finalizers`)
 			}
 		}
 
