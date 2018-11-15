@@ -142,7 +142,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		instance.ObjectMeta.Annotations[`awsRoleId`] = roleId
 		instance.ObjectMeta.Annotations[`awsRoleArn`] = roleArn
 		instance.ObjectMeta.Annotations[`awsRoleName`] = roleName
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `roles.ecc.aws.gotopple.com`)
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `roles.iam.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -196,12 +196,12 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `roles.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `roles.iam.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
 			}
 		}
 
@@ -224,6 +224,15 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 				}
 			} else {
 				return reconcile.Result{}, err
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `roles.iam.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
 

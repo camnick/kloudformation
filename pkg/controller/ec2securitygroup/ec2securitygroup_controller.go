@@ -216,20 +216,12 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `ec2securitygroups.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `ec2securitygroups.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
 			}
-		}
-
-		// need to add check for other Finalizers
-
-		if len(instance.ObjectMeta.Finalizers) != 0 {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2SecurityGroup with remaining finalizers")
-			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2SecurityGroup with remaining finalizers`)
 		}
 
 		// must delete
@@ -251,6 +243,15 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 				}
 			} else {
 				return reconcile.Result{}, err
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `ec2securitygroups.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
 

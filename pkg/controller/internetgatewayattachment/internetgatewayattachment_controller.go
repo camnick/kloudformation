@@ -202,12 +202,12 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `internetgatewayattachments.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `internetgatewayattachments.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the InternetGatewayAttachment with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the InternetGatewayAttachment with remaining finalizers`)
 			}
 		}
 
@@ -231,6 +231,15 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 				}
 			} else {
 				return reconcile.Result{}, err
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `internetgatewayattachments.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
 

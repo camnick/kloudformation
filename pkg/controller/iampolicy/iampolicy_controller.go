@@ -141,7 +141,7 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		instance.ObjectMeta.Annotations[`iamPolicyId`] = iamPolicyId
 		instance.ObjectMeta.Annotations[`iamPolicyArn`] = iamPolicyArn
 		instance.ObjectMeta.Annotations[`iamPolicyAwsName`] = iamPolicyAwsName
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iampolicies.ecc.aws.gotopple.com`)
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iampolicies.iam.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -195,12 +195,11 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `iampolicies.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `iampolicies.iam.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the IAMPolicy with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the IAMPolicy with remaining finalizers`)
 			}
 		}
 
@@ -223,6 +222,15 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 				}
 			} else {
 				return reconcile.Result{}, err
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `iampolicies.iam.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
 

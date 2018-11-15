@@ -212,12 +212,12 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		r.events.Event(instanceProfile, `Normal`, `Annotated`, "Added assgned AWS Role Name to Annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `addroletoinstanceprofiles.iam.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `addroletoinstanceprofiles.iam.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the AddRoleToInstanceProfile with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the AddRoleToInstanceProfile with remaining finalizers`)
 			}
 		}
 
@@ -241,6 +241,15 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 				}
 			} else {
 				return reconcile.Result{}, err
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `addroletoinstanceprofiles.iam.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
 

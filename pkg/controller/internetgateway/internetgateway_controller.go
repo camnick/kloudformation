@@ -216,19 +216,17 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `internetgateways.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `internetgateways.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the InternetGateway with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the InternetGateway with remaining finalizers`)
 			}
 		}
 
 		// must delete
-
 		r.events.Eventf(instance, `Normal`, `ResourceDeleteAttempt`, "Deleting AWS InternetGateway (%s)", instance.ObjectMeta.Annotations[`internetGatewayId`])
-
 		_, err = svc.DeleteInternetGateway(&ec2.DeleteInternetGatewayInput{
 			InternetGatewayId: aws.String(internetGatewayId),
 		})
@@ -248,6 +246,15 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 				}
 			} else {
 				return reconcile.Result{}, err
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `internetgateways.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
 
