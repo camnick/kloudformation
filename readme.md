@@ -9,12 +9,12 @@
   AuthorizeEC2SecurityGroupIngress (soon to be renamed... too long) creates an ingress rule for an AWS EC2 Security Group
 #### Spec Fields:
 ```
-  - ruleName # k8s name of the rule. Used in the finalizer applied to the security group.
+  - ruleName # string- k8s name of the rule. Used in the finalizer applied to the security group.
   - sourceCidrIp # string- ex. "0.0.0.0/0"
-  - ec2SecurityGroupName # k8s name of the EC2SecurityGroup to assign the rule to.
-  - fromPort
-  - toPort
-  - ipProtocol
+  - ec2SecurityGroupName # string- k8s name of the EC2SecurityGroup to assign the rule to.
+  - fromPort # integer
+  - toPort # integer
+  - ipProtocol # string- tcp, udp, icmp, or protocol number. -1 is all protocols
 ```
 #### Dependencies:
   - EC2SecurityGroup
@@ -24,8 +24,8 @@
   An EC2 instance. Launches 1 instance.
 #### Spec Fields:
 ```
-  - imageId
-  - instanceType
+  - imageId # string- AMI number.
+  - instanceType # string- ex. "t2.micro"
   - subnetName # k8s name of the subnet to be launched in
   - userData # Use plaintext- Will be base64 encoded by the controller
   - ec2KeyPair
