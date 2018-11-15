@@ -235,6 +235,17 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			}
 		*/
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `routes.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the Route with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the Route with remaining finalizers`)
+			}
+		}
+
+
+
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `routes.ecc.aws.gotopple.com` {

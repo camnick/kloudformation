@@ -136,7 +136,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routeTableId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`routeTableId`] = routeTableId
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routeTables.ecc.aws.gotopple.com`)
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routetables.ecc.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -211,14 +211,15 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `routeTables.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `routetables.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the RouteTable with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the RouteTable with remaining finalizers`)
 			}
 		}
+
 		// must delete
 		deleteOutput, err := svc.DeleteRouteTable(&ec2.DeleteRouteTableInput{
 			RouteTableId: aws.String(routeTableId),
@@ -241,6 +242,15 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		if deleteOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`DeleteRouteTableOutput was nil`)
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `routetables.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
 		}
 
 		// after a successful delete update the resource with the removed finalizer
