@@ -193,12 +193,12 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `iaminstanceprofiles.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `iaminstanceprofiles.iam.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the IAMInstanceProfile with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the IAMInstanceProfile with remaining finalizers`)
 			}
 		}
 
@@ -221,6 +221,15 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 				}
 			} else {
 				return reconcile.Result{}, err
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `iaminstanceprofiles.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
 

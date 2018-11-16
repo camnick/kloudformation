@@ -199,16 +199,16 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 			r.events.Event(ec2SecurityGroup, `Warning`, `Annotated`, "Failed to add finalizer to Security Group")
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to parent Security Group")
+		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to Security Group")
 		r.events.Event(ec2SecurityGroup, `Normal`, `Annotated`, "Added finalizer to Security Group")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `authorizeec2securitygroupingress.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `authorizeec2securitygroupingress.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the AuthorizeEC2SecurityGroupIngress with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the AuthorizeEC2SecurityGroupIngress with remaining finalizers`)
 			}
 		}
 
@@ -238,17 +238,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 			}
 		}
 
-		// after a successful delete update the resource with the removed finalizer
-		err = r.Update(context.TODO(), instance)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted AuthorizeEC2SecurityGroupIngress and removed finalizers")
-
-		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
-
-		// remove finalizer from parent security group
+		// remove finalizer from security group that had the rule
 		for i, f := range ec2SecurityGroup.ObjectMeta.Finalizers {
 			if f == (instance.Spec.RuleName + `.authorizeec2securitygroupingress.ecc.aws.gotopple.com`) {
 				ec2SecurityGroup.ObjectMeta.Finalizers = append(
@@ -256,12 +246,30 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 					ec2SecurityGroup.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `authorizeec2securitygroupingress.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
+		}
+
 		err = r.Update(context.TODO(), ec2SecurityGroup)
 		if err != nil {
 			r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		r.events.Eventf(ec2SecurityGroup, `Normal`, `Deleted`, "Deleted finalizer: %s", (instance.Spec.RuleName + `.authorizeec2securitygroupingress.ecc.aws.gotopple.com`))
+
+		// after a successful delete update the resource with the removed finalizer
+		err = r.Update(context.TODO(), instance)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Deleted`, "Deleted AuthorizeEC2SecurityGroupIngress and removed finalizers")
 
 	}
 

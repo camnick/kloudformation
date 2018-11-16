@@ -188,12 +188,12 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `vpcs.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `vpcs.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the VPC with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the VPC with remaining finalizers`)
 			}
 		}
 
@@ -207,6 +207,15 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 		if deleteOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`DeleteVPCOutput was nil`)
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `vpcs.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
 		}
 
 		// after a successful delete update the resource with the removed finalizer

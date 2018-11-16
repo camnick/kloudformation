@@ -205,12 +205,12 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 
 		// Make sure that there are tags to add before attempting to add them.
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `eipassociations.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `eipassociations.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EIPAssociation with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the EIPAssociation with remaining finalizers`)
 			}
 		}
 
@@ -233,6 +233,15 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 				}
 			} else {
 				return reconcile.Result{}, err
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `eipassociations.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
 			}
 		}
 

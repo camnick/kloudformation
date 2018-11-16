@@ -252,30 +252,14 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `ec2keypairs.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `ec2keypairs.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2KeyPair with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2KeyPair with remaining finalizers`)
 			}
 		}
 
-		//check for finalizers not placed by the controller
-		if len(instance.ObjectMeta.Finalizers) != 0 {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2KeyPair with remaining finalizers")
-			return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2KeyPair with remaining finalizers`)
-		}
-
-		// delete the secret
-		err = r.Delete(context.TODO(), keySecret)
-		if err != nil {
-			//placeholder for real logging
-		} else {
-			//placeholder for real logging
-		}
-		// TODO(user): Change this for the object type created by your controller
-		// Update the found object and write the result back if there are any changes
 		// must delete
 		_, err = svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
 			KeyName: aws.String(awsKeyName),
@@ -297,12 +281,31 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 				return reconcile.Result{}, err
 			}
 		}
+
+		// delete the secret
+		err = r.Delete(context.TODO(), keySecret)
+		if err != nil {
+			//placeholder for real logging
+		} else {
+			//placeholder for real logging
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `ec2keypairs.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
+		}
+
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
+
 		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2KeyPair and removed finalizers")
 	}
 

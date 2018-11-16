@@ -280,6 +280,14 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
+		// check for other Finalizers
+		for i := range instance.ObjectMeta.Finalizers {
+			if instance.ObjectMeta.Finalizers[i] != `ec2instances.ecc.aws.gotopple.com` {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2Instance with remaining finalizers")
+				return reconcile.Result{}, fmt.Errorf(`Unable to delete the EC2Instance with remaining finalizers`)
+			}
+		}
+
 		// must delete
 		_, err = svc.TerminateInstances(&ec2.TerminateInstancesInput{
 			InstanceIds: []*string{
