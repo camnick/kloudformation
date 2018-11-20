@@ -26,11 +26,12 @@ spec:
               type: string
             gatewayName:
               type: string
+            natGatewayId:
+              type: string
             routeTableName:
               type: string
           required:
           - destinationCidrBlock
-          - gatewayName
           - routeTableName
           type: object
         status:
