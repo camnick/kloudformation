@@ -499,20 +499,6 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			}
 		}
 
-		err = r.Update(context.TODO(), subnet)
-		if err != nil {
-			r.events.Eventf(subnet, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Eventf(subnet, `Normal`, `Deleted`, "Deleted finalizer: %s", (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
-
-		err = r.Update(context.TODO(), ec2SecurityGroup)
-		if err != nil {
-			r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Eventf(ec2SecurityGroup, `Normal`, `Deleted`, "Deleted finalizer: %s", (ec2InstanceId + `.ec2instances.ecc.aws.gotopple.com`))
-
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
