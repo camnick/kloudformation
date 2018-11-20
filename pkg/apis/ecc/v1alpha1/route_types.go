@@ -32,7 +32,7 @@ type RouteSpec struct {
 	//EgressOnlyInternetGatewayName string `json:"egressOnlyInternetGatewayId"`
 	GatewayName string `json:"gatewayName,omitempty"` //InternetGateway is what this is about.
 	//InstanceName                  string `json:"instanceId"`
-	NatGatewayName string `json:"natGatewayId,omitempty"`
+	NatGatewayName string `json:"natGatewayName,omitempty"`
 	//NetworkInterfaceName          string `json:"networkInterfaceId"`
 	RouteTableName string `json:"routeTableName"`
 	//VpcPeeringConnectionName      string `json:"vpcPeeringConnectionId"`
