@@ -110,19 +110,44 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
+	validTarget := false
+
 	internetGateway := &eccv1alpha1.InternetGateway{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
-			return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+			//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 		}
-		return reconcile.Result{}, err
+		//return reconcile.Result{}, err
 	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
 		r.events.Eventf(instance, `Warning`, `CreateFailure`, "InternetGateway has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+		//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+	} else if err == nil {
+		r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
+		validTarget = true
 	}
 
+	natGateway := &eccv1alpha1.NATGateway{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.NatGatewayName, Namespace: instance.Namespace}, natGateway)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find NATGateway")
+			//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
+		}
+		//return reconcile.Result{}, err
+	} else if len(natGateway.ObjectMeta.Annotations[`natGatewayId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "NATGateway has no ID annotation")
+		//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
+	} else if err == nil {
+		r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
+		validTarget = true
+	}
+
+	if validTarget != true {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready`)
+		return reconcile.Result{}, fmt.Errorf(`Route target not ready/found`)
+	}
 	svc := ec2.New(r.sess)
 	// get the RouteId out of the annotations
 	// if absent then create
@@ -135,7 +160,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			//EgressOnlyInternetGatewayName:
 			GatewayId: aws.String(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]),
 			//InstanceName: aws.String(instance.Spec.InstanceName),
-			//NatGatewayName: aws.String(instance.Spec.NatGatewayName),
+			NatGatewayId: aws.String(natGateway.ObjectMeta.Annotations[`natGatewayId`]),
 			//NetworkInterfaceName: aws.String(instance.Spec.NetworkInterfaceName),
 			RouteTableId: aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
 			//VpcPeeringConnectionName: aws.String(instance.Spec.VpcPeeringConnectionName),
