@@ -18,6 +18,7 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	aws "github.com/aws/aws-sdk-go/aws"
@@ -184,6 +185,35 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		instance.ObjectMeta.Annotations[`routeCreated`] = routeCreated
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)
 
+		routeFinalizerPresent := false
+		for _, i := range routeTable.ObjectMeta.Finalizers {
+			if i == `routes.ecc.aws.gotopple.com` {
+				routeFinalizerPresent = true
+			}
+		}
+
+		if routeFinalizerPresent != true {
+			routeTable.ObjectMeta.Finalizers = append(routeTable.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)
+			routeTable.ObjectMeta.Annotations[`routeList`] = `[]`
+		}
+
+		routeList := []string{}
+		err = json.Unmarshal([]byte(routeTable.ObjectMeta.Annotations[`routeList`]), &routeList)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse route list`)
+		}
+		routeList = append(routeList, instance.Name)
+		newAnnotation, err := json.Marshal(routeList)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update route list`)
+		}
+		routeTable.ObjectMeta.Annotations[`routeList`] = string(newAnnotation)
+		err = r.Update(context.TODO(), routeTable)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't update Route Table annotations: %s`, err.Error())
+			r.events.Eventf(routeTable, `Warning`, `ResourceUpdateFailure`, `Couldn't update Route Table annotations %s:`, err.Error())
+		}
+
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
 			// If the call to update the resource annotations has failed then
@@ -269,15 +299,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			}
 		}
 
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `routes.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
-			}
-		}
-
 		// must delete
 		_, err := svc.DeleteRoute(&ec2.DeleteRouteInput{
 			RouteTableId:         aws.String(instance.ObjectMeta.Annotations[`associatedRouteTableId`]),
@@ -299,6 +320,53 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				return reconcile.Result{}, err
 			}
 		}
+
+		//remove the route from the list of routes in the table annotations
+		routeList := []string{}
+		err = json.Unmarshal([]byte(routeTable.ObjectMeta.Annotations[`routeList`]), &routeList)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse route list`)
+
+		}
+		for i, f := range routeList {
+			if f == instance.Name {
+				routeList = append(routeList[:i], routeList[i+1:]...)
+			}
+		}
+		newAnnotation, err := json.Marshal(routeList)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update route list`)
+		}
+		routeTable.ObjectMeta.Annotations[`routeList`] = string(newAnnotation)
+
+		//check if any rules remain
+		if routeTable.ObjectMeta.Annotations[`routeList`] == `[]` {
+			for i, f := range routeTable.ObjectMeta.Finalizers {
+				if f == `routes.ecc.aws.gotopple.com` {
+					routeTable.ObjectMeta.Finalizers = append(
+						routeTable.ObjectMeta.Finalizers[:i],
+						routeTable.ObjectMeta.Finalizers[i+1:]...,
+					)
+				}
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `routes.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
+		}
+
+		err = r.Update(context.TODO(), routeTable)
+		if err != nil {
+			r.events.Eventf(routeTable, `Warning`, `ResourceUpdateFailure`, `Unable to remove annotation: %s`, err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Deleted`, `Deleted AWS Route annotation`)
+
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
