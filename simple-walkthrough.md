@@ -4,7 +4,7 @@ At it's lowest level, Kloudformation is a 1:1 abstraction of AWS Cloudformation 
 
 First, clone the repo
 
-<NEED TO INSERT BLOCK ABOUT CLONING AND SETTING UP DEPENDENCIES>
+NEED TO INSERT BLOCK ABOUT CLONING AND SETTING UP DEPENDENCIES
 
 
 To get started with a simple setup, let's create an EC2 instance within a VPC that us running a Tomcat web server. In order to get this up and running, we'll need to create the following Kubernetes Kloudformation resources:
