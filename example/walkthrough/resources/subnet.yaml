@@ -1,0 +1,12 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: Subnet
+metadata:
+  name: subnet-walkthrough
+  namespace: kloudformation
+spec:
+  vpcName: vpc-walkthrough
+  availabilityZone: "us-west-2a"
+  cidrBlock: "10.10.10.0/24"
+  tags:
+   - key: Name
+     value: Kloudformation-Subnet

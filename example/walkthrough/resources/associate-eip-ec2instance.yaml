@@ -1,0 +1,10 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EIPAssociation
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: eipassociation-walkthrough
+  namespace: kloudformation
+spec:
+  allocationName: eip-ec2instance-walkthrough
+  ec2InstanceName: ec2instance-walkthrough
