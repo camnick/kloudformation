@@ -6,7 +6,7 @@ metadata:
   name: ingressrule-walkthrough-http
   namespace: kloudformation
 spec:
-  ruleName: kloudformation-http
+  ruleName: http
   sourceCidrIp: 0.0.0.0/0
   ec2SecurityGroupName: ec2securitygroup-walkthrough
   fromPort: 8888

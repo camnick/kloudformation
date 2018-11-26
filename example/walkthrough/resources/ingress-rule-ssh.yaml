@@ -6,7 +6,7 @@ metadata:
   name: ingressrule-walkthrough-ssh
   namespace: kloudformation
 spec:
-  ruleName: kloudformation-ssh
+  ruleName: ssh
   sourceCidrIp: 0.0.0.0/0
   ec2SecurityGroupName: ec2securitygroup-walkthrough
   fromPort: 22

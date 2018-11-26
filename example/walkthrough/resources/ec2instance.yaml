@@ -15,7 +15,7 @@ spec:
             sudo yum install docker -y
             sudo service docker start
             sudo usermod -a -G docker ec2-user
-            docker run -it --rm -p 8888:8080 tomcat:8.0
+            sudo docker run -d -p 8888:8080 tomcat:8.0
   ec2KeyPair: keypair-walkthrough
   ec2SecurityGroupName: ec2securitygroup-walkthrough
   tags:
