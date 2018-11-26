@@ -3,12 +3,12 @@ kind: AuthorizeEC2SecurityGroupIngress
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: ingressrule-walkthrough
+  name: ingressrule-walkthrough-http
   namespace: kloudformation
 spec:
-  ruleName: kloudformation-ssh
+  ruleName: kloudformation-http
   sourceCidrIp: 0.0.0.0/0
   ec2SecurityGroupName: ec2securitygroup-walkthrough
-  fromPort: 22
-  toPort: 22
+  fromPort: 8888
+  toPort: 8888
   ipProtocol: tcp
