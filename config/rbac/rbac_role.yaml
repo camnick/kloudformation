@@ -159,7 +159,7 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - ecc.aws.gotopple.com
+  - iam.aws.gotopple.com
   resources:
   - iaminstanceprofiles
   verbs:

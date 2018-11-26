@@ -18,6 +18,7 @@ package route
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	aws "github.com/aws/aws-sdk-go/aws"
@@ -110,19 +111,44 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 	}
 
+	validTarget := false
+
 	internetGateway := &eccv1alpha1.InternetGateway{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
-			return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+			//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 		}
-		return reconcile.Result{}, err
+		//return reconcile.Result{}, err
 	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
 		r.events.Eventf(instance, `Warning`, `CreateFailure`, "InternetGateway has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+		//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+	} else if err == nil {
+		r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
+		validTarget = true
 	}
 
+	natGateway := &eccv1alpha1.NATGateway{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.NatGatewayName, Namespace: instance.Namespace}, natGateway)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find NATGateway")
+			//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
+		}
+		//return reconcile.Result{}, err
+	} else if len(natGateway.ObjectMeta.Annotations[`natGatewayId`]) <= 0 {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, "NATGateway has no ID annotation")
+		//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
+	} else if err == nil {
+		r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
+		validTarget = true
+	}
+
+	if validTarget != true {
+		r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready`)
+		return reconcile.Result{}, fmt.Errorf(`Route target not ready/found`)
+	}
 	svc := ec2.New(r.sess)
 	// get the RouteId out of the annotations
 	// if absent then create
@@ -135,7 +161,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			//EgressOnlyInternetGatewayName:
 			GatewayId: aws.String(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]),
 			//InstanceName: aws.String(instance.Spec.InstanceName),
-			//NatGatewayName: aws.String(instance.Spec.NatGatewayName),
+			NatGatewayId: aws.String(natGateway.ObjectMeta.Annotations[`natGatewayId`]),
 			//NetworkInterfaceName: aws.String(instance.Spec.NetworkInterfaceName),
 			RouteTableId: aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
 			//VpcPeeringConnectionName: aws.String(instance.Spec.VpcPeeringConnectionName),
@@ -158,6 +184,35 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		instance.ObjectMeta.Annotations[`associatedRouteTableId`] = routeTable.ObjectMeta.Annotations[`routeTableId`]
 		instance.ObjectMeta.Annotations[`routeCreated`] = routeCreated
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)
+
+		routeFinalizerPresent := false
+		for _, i := range routeTable.ObjectMeta.Finalizers {
+			if i == `routes.ecc.aws.gotopple.com` {
+				routeFinalizerPresent = true
+			}
+		}
+
+		if routeFinalizerPresent != true {
+			routeTable.ObjectMeta.Finalizers = append(routeTable.ObjectMeta.Finalizers, `routes.ecc.aws.gotopple.com`)
+			routeTable.ObjectMeta.Annotations[`routeList`] = `[]`
+		}
+
+		routeList := []string{}
+		err = json.Unmarshal([]byte(routeTable.ObjectMeta.Annotations[`routeList`]), &routeList)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse route list`)
+		}
+		routeList = append(routeList, instance.Name)
+		newAnnotation, err := json.Marshal(routeList)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update route list`)
+		}
+		routeTable.ObjectMeta.Annotations[`routeList`] = string(newAnnotation)
+		err = r.Update(context.TODO(), routeTable)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't update Route Table annotations: %s`, err.Error())
+			r.events.Eventf(routeTable, `Warning`, `ResourceUpdateFailure`, `Couldn't update Route Table annotations %s:`, err.Error())
+		}
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -244,15 +299,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			}
 		}
 
-		// remove the finalizer
-		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `routes.ecc.aws.gotopple.com` {
-				instance.ObjectMeta.Finalizers = append(
-					instance.ObjectMeta.Finalizers[:i],
-					instance.ObjectMeta.Finalizers[i+1:]...)
-			}
-		}
-
 		// must delete
 		_, err := svc.DeleteRoute(&ec2.DeleteRouteInput{
 			RouteTableId:         aws.String(instance.ObjectMeta.Annotations[`associatedRouteTableId`]),
@@ -274,6 +320,53 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				return reconcile.Result{}, err
 			}
 		}
+
+		//remove the route from the list of routes in the table annotations
+		routeList := []string{}
+		err = json.Unmarshal([]byte(routeTable.ObjectMeta.Annotations[`routeList`]), &routeList)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse route list`)
+
+		}
+		for i, f := range routeList {
+			if f == instance.Name {
+				routeList = append(routeList[:i], routeList[i+1:]...)
+			}
+		}
+		newAnnotation, err := json.Marshal(routeList)
+		if err != nil {
+			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update route list`)
+		}
+		routeTable.ObjectMeta.Annotations[`routeList`] = string(newAnnotation)
+
+		//check if any rules remain
+		if routeTable.ObjectMeta.Annotations[`routeList`] == `[]` {
+			for i, f := range routeTable.ObjectMeta.Finalizers {
+				if f == `routes.ecc.aws.gotopple.com` {
+					routeTable.ObjectMeta.Finalizers = append(
+						routeTable.ObjectMeta.Finalizers[:i],
+						routeTable.ObjectMeta.Finalizers[i+1:]...,
+					)
+				}
+			}
+		}
+
+		// remove the finalizer
+		for i, f := range instance.ObjectMeta.Finalizers {
+			if f == `routes.ecc.aws.gotopple.com` {
+				instance.ObjectMeta.Finalizers = append(
+					instance.ObjectMeta.Finalizers[:i],
+					instance.ObjectMeta.Finalizers[i+1:]...)
+			}
+		}
+
+		err = r.Update(context.TODO(), routeTable)
+		if err != nil {
+			r.events.Eventf(routeTable, `Warning`, `ResourceUpdateFailure`, `Unable to remove annotation: %s`, err.Error())
+			return reconcile.Result{}, err
+		}
+		r.events.Event(instance, `Normal`, `Deleted`, `Deleted AWS Route annotation`)
+
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {

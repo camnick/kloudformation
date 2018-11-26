@@ -132,16 +132,18 @@ An EC2 Keypair
 
 ### Route
 #### Description
-  Route to an InternetGateway
+  Route to an InternetGateway or NATGateway. Only use one!
 #### Spec Fields:
 ```
   - destinationCidrBlock # string- the destination for the route. ex. "0.0.0.0/0"
   - routeTableName # string- the k8s name of the route table to assign the route to
   - gatewayName # string- the k8s name of the InternetGateway to use with the route
+  - natGatewayName # string- the k8s name of the NATGateway to use with the route
 ```  
 #### Dependencies:
   - RouteTable
   - InternetGateway
+  - NATGateway
 
 ### RouteTable
 #### Description

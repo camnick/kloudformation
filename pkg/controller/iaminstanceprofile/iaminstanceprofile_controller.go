@@ -82,7 +82,7 @@ type ReconcileIAMInstanceProfile struct {
 // Reconcile reads that state of the cluster for a IAMInstanceProfile object and makes changes based on the state read
 // and what is in the IAMInstanceProfile.Spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=ecc.aws.gotopple.com,resources=iaminstanceprofiles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=iam.aws.gotopple.com,resources=iaminstanceprofiles,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the IAMInstanceProfile instance
 	instance := &iamv1alpha1.IAMInstanceProfile{}
@@ -139,7 +139,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 		instance.ObjectMeta.Annotations[`iamInstanceProfileId`] = iamInstanceProfileId
 		instance.ObjectMeta.Annotations[`iamInstanceProfileArn`] = iamInstanceProfileArn
 		instance.ObjectMeta.Annotations[`awsInstanceProfileName`] = iamInstanceProfileName
-		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iaminstanceprofiles.ecc.aws.gotopple.com`)
+		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iaminstanceprofiles.iam.aws.gotopple.com`)
 
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
@@ -226,7 +226,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
-			if f == `iaminstanceprofiles.ecc.aws.gotopple.com` {
+			if f == `iaminstanceprofiles.iam.aws.gotopple.com` {
 				instance.ObjectMeta.Finalizers = append(
 					instance.ObjectMeta.Finalizers[:i],
 					instance.ObjectMeta.Finalizers[i+1:]...)

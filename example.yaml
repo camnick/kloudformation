@@ -5,6 +5,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: authorizeec2securitygroupingress-sample
 spec:
+  ruleName: testrule
   sourceCidrIp: 0.0.0.0/0
   ec2SecurityGroupName: ec2securitygroup-sample
   fromPort: 22
@@ -48,6 +49,9 @@ spec:
   ec2SecurityGroupName: sample-securitygroup
   vpcName: example-network
   description: an aws ec2 security group
+  tags:
+    - key: Name
+      value: sample-ec2-securitygroup
 ---
 apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: EC2VolumeAttachment
@@ -311,26 +315,4 @@ spec:
   maxSessionDuration: 3600
   path: /testRoles/
   roleName: TestRoleName
----
-apiVersion: swarm.aws.gotopple.com/v1alpha1
-kind: DockerSwarm
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: dockerswarm-sample
-spec:
-  numManagers: 3
-  numWorkers: 5
-  managerSize: t2.micro
-  workerSize: t2.micro
----
-apiVersion: test.aws.gotopple.com/v1alpha1
-kind: Test
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: test-sample
-spec:
-  # Add fields here
-  foo: bar
 ---
