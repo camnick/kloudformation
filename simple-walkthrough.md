@@ -38,7 +38,10 @@ Create the VPC by applying the VPC file: `kubectl apply -f example/walkthrough/r
 
 Watch the log, as soon as it's ready, in another terminal window, check out the annotations of the VPC: `kubectl describe vpc --namespace kloudformation`
 
-The annotations should look like this: `Annotations:  vpcid=vpc-xxxxxxxxxxxxxxxxx` with some identifier in the place of the string of x's.
+The annotations should look like this with some identifier in the place of the string of x's:
+```
+Annotations:  vpcid=vpc-xxxxxxxxxxxxxxxxx
+```
 
 Further down, you can see the events that occurred during creation: (Yours should look similar)
 ```
@@ -53,7 +56,11 @@ Events:
 
 Next, apply the EC2 Security Group file: `kubectl apply -f example/walkthrough/resources/securitygroup.yaml`
 
-Again, check out the annotations: `kubectl describe ec2securitygroup --namespace kloudformation` You should only see the AWS Security Group ID: `Annotations:  ec2SecurityGroupId=sg-xxxxxxxxxxxxxxxxx`. The event log for creating the security group will look pretty much the same as the VPC's log.
+Again, check out the annotations: `kubectl describe ec2securitygroup --namespace kloudformation` You should only see the AWS Security Group ID:
+```
+Annotations:  ec2SecurityGroupId=sg-xxxxxxxxxxxxxxxxx
+```
+The event log for creating the security group will look pretty much the same as the VPC's log.
 
 Now, let's apply an ingress rule to the security group and see what happens: `kubectl apply -f example/walkthrough/resources/ingress-rule-ssh.yaml`
 
@@ -86,7 +93,7 @@ Remove the first ingress rule to see what happens next.
 
 `kubectl delete -f example/walkthrough/resources/ingressrule-walkthrough-ssh.yaml`
 
-The list is down to the one remaining rule, and the finalizer is still present. The ingress rule controller will remove the finalizer when the last rule is removed. Once all rules have been removed, the ingressRule list will show as `[]`.
+The list is down to the one remaining rule, and the finalizer is still present. The ingress rule controller will remove the finalizer when the last rule is removed. Once all rules have been removed, the ingressRule list will show as an empty list `[]`. This is different than a security group that has not had ingress rules applied to it. This behavior may or may not change in the future.
 
 Next, let's create the Subnet, using the file example/walkthrough/resources/subnet.yaml and the NAT Gateway with example/walkthrough/resources/nat-gateway.yaml.
 
@@ -164,4 +171,41 @@ Check the user data field in the object spec:
 
 `kubectl describe ec2instance --namespace kloudformation`
 
-Put the IP/port into your browser and give it a shot!
+Put the IP/port into your browser and give it a shot.
+
+Finally, if you want to ssh into your ec2 instance, you can access your newly generated ec2 keypair within Kubernetes. The EC2KeyPair resource creates both an AWS EC2 Keypair within AWS, and also creates a corresponding Kubernetes secret.
+
+If you check for Kubernetes secrets:
+
+`kubectl get secret --namespace kloudformation`
+
+You should get something back like:
+
+```
+NAME                              TYPE                                  DATA      AGE
+default-token-xvbln               kubernetes.io/service-account-token   3         3h
+keypair-walkthrough-private-key   Opaque                                1         22s
+```
+
+`kubectl get secret keypair-walkthrough-private-key -o yaml --namespace kloudformation`
+
+Will show the base64-encoded _PRIVATE SSH KEY_ that you can use to access your EC2 Instance.
+
+```
+apiVersion: v1
+data:
+  PrivateKey: LS0tLS1CRUdJT...<base64 stuff here>...WS0tLS0t
+kind: Secret
+metadata:
+  annotations:
+    createdBy: keypair-walkthrough
+  creationTimestamp: 2018-11-26T22:59:17Z
+  name: keypair-walkthrough-private-key
+  namespace: kloudformation
+  resourceVersion: "10979"
+  selfLink: /api/v1/namespaces/kloudformation/secrets/keypair-walkthrough-private-key
+  uid: e730d7f6-f1ce-11e8-a263-025000000001
+type: Opaque
+```
+
+For now, you can base64 decode the value at the command line and redirect the output to a .pem file. In the future there will be different ways to work with the key without resorting to manual means.
