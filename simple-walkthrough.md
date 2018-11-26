@@ -19,12 +19,12 @@ To get started with a simple setup, let's create an EC2 instance within a VPC th
 - RouteTableAssociation
 - Route
 - EC2SecurityGroup
-- 2x AuthorizeEC2SecurityGroupIngress (Ingress rules for ssh and http. Sorry- this name is going to change to something much shorter)
+- 2x AuthorizeEC2SecurityGroupIngress (Ingress rules for ssh and http. Sorry- this name is going to change to something much shorter. There are issues with finalizers longer than 63 characters)
 - EC2Instance
 - EIPAssociation (This will associate the second EIP with the EC2Instance)
 - EC2KeyPair
 
-We're also going to be doing this in a separate namespace, to keep things tidy, so we'll also be using a Kubernetes object to create the namespace `kloudformation`
+We're also going to be doing this in a separate namespace, to keep things tidy, so we'll also be using Kubernetes to create the namespace `kloudformation`
 
 The namespace file is located in `example/walkthrough`, and all of the Kloudformation resources are located in `example/walkthrough/resources`
 
