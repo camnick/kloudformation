@@ -241,7 +241,6 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 			instanceProfileFound = false
 		}
 
-
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
 			if instance.ObjectMeta.Finalizers[i] != `addroletoinstanceprofiles.iam.aws.gotopple.com` {
@@ -269,13 +268,13 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 					default:
 						return reconcile.Result{}, err
 					}
-					} else {
-						return reconcile.Result{}, err
-					}
+				} else {
+					return reconcile.Result{}, err
 				}
-			} else {
-				r.events.Eventf(instance, `Warning`, `AlreadyDeleted`, `Role or Instance Profile wasn't found- Resource will be deleted`)
 			}
+		} else {
+			r.events.Eventf(instance, `Warning`, `AlreadyDeleted`, `Role or Instance Profile wasn't found- Resource will be deleted`)
+		}
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `addroletoinstanceprofiles.iam.aws.gotopple.com` {
