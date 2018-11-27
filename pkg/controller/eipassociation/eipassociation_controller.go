@@ -233,7 +233,6 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
 		}
 
-
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
 			if instance.ObjectMeta.Finalizers[i] != `eipassociations.ecc.aws.gotopple.com` {
@@ -243,7 +242,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		}
 
 		// must delete
-		if eipFound != true && ec2InstanceFound != true {
+		if eipFound == true && ec2InstanceFound == true {
 			_, err = svc.DisassociateAddress(&ec2.DisassociateAddressInput{
 				AssociationId: aws.String(eipAssociationId),
 			})
@@ -260,11 +259,11 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 					default:
 						return reconcile.Result{}, err
 					}
-					} else {
-						return reconcile.Result{}, err
-					}
+				} else {
+					return reconcile.Result{}, err
 				}
 			}
+		}
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `eipassociations.ecc.aws.gotopple.com` {

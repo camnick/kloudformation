@@ -245,7 +245,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 
 		// must delete
-		if vpcFound = true {
+		if vpcFound == true {
 			_, err = svc.ReleaseAddress(&ec2.ReleaseAddressInput{
 				AllocationId: aws.String(instance.ObjectMeta.Annotations[`eipAllocationId`]),
 			})
@@ -262,11 +262,11 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 					default:
 						return reconcile.Result{}, err
 					}
-					} else {
-						return reconcile.Result{}, err
-					}
+				} else {
+					return reconcile.Result{}, err
 				}
 			}
+		}
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `eips.ecc.aws.gotopple.com` {
