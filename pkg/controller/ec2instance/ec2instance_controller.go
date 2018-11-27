@@ -358,41 +358,41 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		//get resource info
+		subnetFound := true
 		subnet := &eccv1alpha1.Subnet{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet- continuing with deletion")
-				//return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+				subnetFound = false
 			}
-			return reconcile.Result{}, err
 		} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 		}
 
+		ec2SecurityGroupFound := true
 		ec2SecurityGroup := &eccv1alpha1.EC2SecurityGroup{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				println(err)
 				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup- continuing with deletion")
-				//return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
+				ec2SecurityGroupFound = false
 			}
-			return reconcile.Result{}, err
 		} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
 		}
 
+		ec2KeyPairFound := true
 		ec2KeyPair := &eccv1alpha1.EC2KeyPair{}
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2KeyPair, Namespace: instance.Namespace}, ec2KeyPair)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find KeyPair- continuing with deletion")
-				//return reconcile.Result{}, fmt.Errorf(`EC2KeyPair not ready`)
+				ec2KeyPairFound = false
 			}
-			return reconcile.Result{}, err
 		} else if len(ec2KeyPair.ObjectMeta.Annotations[`awsKeyName`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Keypair has no AWS Key Name to lookup")
 			return reconcile.Result{}, fmt.Errorf(`EC2KeyPair not ready`)
@@ -431,105 +431,112 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 		}
 
 		//remove instance from keypair list
-		instanceList := []string{}
-		err = json.Unmarshal([]byte(ec2KeyPair.ObjectMeta.Annotations[`instancesWithKeyPair`]), &instanceList)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse instance list`)
-		}
-		for i, f := range instanceList {
-			if f == ec2InstanceId {
-				instanceList = append(instanceList[:i], instanceList[i+1:]...)
+		if ec2KeyPairFound == true {
+			instanceList := []string{}
+			err = json.Unmarshal([]byte(ec2KeyPair.ObjectMeta.Annotations[`instancesWithKeyPair`]), &instanceList)
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse instance list`)
 			}
-		}
-		newAnnotation, err := json.Marshal(instanceList)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update instance list`)
-		}
-		ec2KeyPair.ObjectMeta.Annotations[`instancesWithKeyPair`] = string(newAnnotation)
-		//check if any instances are still using the keypair then remove finalizer
-		if ec2KeyPair.ObjectMeta.Annotations[`instancesWithKeyPair`] == `[]` {
-			for i, f := range ec2KeyPair.ObjectMeta.Finalizers {
-				if f == `ec2instances.ecc.aws.gotopple.com` {
-					ec2KeyPair.ObjectMeta.Finalizers = append(
-						ec2KeyPair.ObjectMeta.Finalizers[:i],
-						ec2KeyPair.ObjectMeta.Finalizers[i+1:]...)
+			for i, f := range instanceList {
+				if f == ec2InstanceId {
+					instanceList = append(instanceList[:i], instanceList[i+1:]...)
 				}
 			}
-		}
-		//update the KeyPair
-		err = r.Update(context.TODO(), ec2KeyPair)
-		if err != nil {
-			r.events.Eventf(ec2KeyPair, `Warning`, `ResourceUpdateFailure`, "Unable to remove annotation: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2KeyPair annotation")
-		//remove instance from security group list
-		instanceList = []string{}
-		err = json.Unmarshal([]byte(ec2SecurityGroup.ObjectMeta.Annotations[`assignedToInstances`]), &instanceList)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse instance list`)
-		}
-		for i, f := range instanceList {
-			if f == ec2InstanceId {
-				instanceList = append(instanceList[:i], instanceList[i+1:]...)
+			newAnnotation, err := json.Marshal(instanceList)
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update instance list`)
 			}
-		}
-		newAnnotation, err = json.Marshal(instanceList)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update instance list`)
-		}
-		ec2SecurityGroup.ObjectMeta.Annotations[`assignedToInstances`] = string(newAnnotation)
-		//check if any instances are still using the securitygroup then remove finalizer
-		if ec2SecurityGroup.ObjectMeta.Annotations[`assignedToInstances`] == `[]` {
-			for i, f := range ec2SecurityGroup.ObjectMeta.Finalizers {
-				if f == `ec2instances.ecc.aws.gotopple.com` {
-					ec2SecurityGroup.ObjectMeta.Finalizers = append(
-						ec2SecurityGroup.ObjectMeta.Finalizers[:i],
-						ec2SecurityGroup.ObjectMeta.Finalizers[i+1:]...)
+			ec2KeyPair.ObjectMeta.Annotations[`instancesWithKeyPair`] = string(newAnnotation)
+			//check if any instances are still using the keypair then remove finalizer
+			if ec2KeyPair.ObjectMeta.Annotations[`instancesWithKeyPair`] == `[]` {
+				for i, f := range ec2KeyPair.ObjectMeta.Finalizers {
+					if f == `ec2instances.ecc.aws.gotopple.com` {
+						ec2KeyPair.ObjectMeta.Finalizers = append(
+							ec2KeyPair.ObjectMeta.Finalizers[:i],
+							ec2KeyPair.ObjectMeta.Finalizers[i+1:]...)
+					}
 				}
 			}
-		}
-		//update the securitygroup
-		err = r.Update(context.TODO(), ec2SecurityGroup)
-		if err != nil {
-			r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, "Unable to remove annotation: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2SecurityGroup annotation")
-		//remove instance from subnet hosted list
-		instanceList = []string{}
-		err = json.Unmarshal([]byte(subnet.ObjectMeta.Annotations[`instancesHosted`]), &instanceList)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse instance list`)
-		}
-		for i, f := range instanceList {
-			if f == ec2InstanceId {
-				instanceList = append(instanceList[:i], instanceList[i+1:]...)
+			//update the KeyPair
+			err = r.Update(context.TODO(), ec2KeyPair)
+			if err != nil {
+				r.events.Eventf(ec2KeyPair, `Warning`, `ResourceUpdateFailure`, "Unable to remove annotation: %s", err.Error())
+				return reconcile.Result{}, err
 			}
+			r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2KeyPair annotation")
 		}
-		newAnnotation, err = json.Marshal(instanceList)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update instance list`)
-		}
-		subnet.ObjectMeta.Annotations[`instancesHosted`] = string(newAnnotation)
-		//check if any instances are still hosted by the subnet then remove finalizer
-		if subnet.ObjectMeta.Annotations[`instancesHosted`] == `[]` {
-			for i, f := range subnet.ObjectMeta.Finalizers {
-				if f == `ec2instances.ecc.aws.gotopple.com` {
-					subnet.ObjectMeta.Finalizers = append(
-						subnet.ObjectMeta.Finalizers[:i],
-						subnet.ObjectMeta.Finalizers[i+1:]...)
-				}
-			}
-		}
-		//update the subnet
-		err = r.Update(context.TODO(), subnet)
-		if err != nil {
-			r.events.Eventf(subnet, `Warning`, `ResourceUpdateFailure`, "Unable to remove annotation: %s", err.Error())
-			return reconcile.Result{}, err
-		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Subnet annotation")
 
+		//remove instance from security group list
+		if ec2SecurityGroupFound == true {
+			instanceList := []string{}
+			err = json.Unmarshal([]byte(ec2SecurityGroup.ObjectMeta.Annotations[`assignedToInstances`]), &instanceList)
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse instance list`)
+			}
+			for i, f := range instanceList {
+				if f == ec2InstanceId {
+					instanceList = append(instanceList[:i], instanceList[i+1:]...)
+				}
+			}
+			newAnnotation, err := json.Marshal(instanceList)
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update instance list`)
+			}
+			ec2SecurityGroup.ObjectMeta.Annotations[`assignedToInstances`] = string(newAnnotation)
+			//check if any instances are still using the securitygroup then remove finalizer
+			if ec2SecurityGroup.ObjectMeta.Annotations[`assignedToInstances`] == `[]` {
+				for i, f := range ec2SecurityGroup.ObjectMeta.Finalizers {
+					if f == `ec2instances.ecc.aws.gotopple.com` {
+						ec2SecurityGroup.ObjectMeta.Finalizers = append(
+							ec2SecurityGroup.ObjectMeta.Finalizers[:i],
+							ec2SecurityGroup.ObjectMeta.Finalizers[i+1:]...)
+					}
+				}
+			}
+			//update the securitygroup
+			err = r.Update(context.TODO(), ec2SecurityGroup)
+			if err != nil {
+				r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, "Unable to remove annotation: %s", err.Error())
+				return reconcile.Result{}, err
+			}
+			r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2SecurityGroup annotation")
+		}
+
+		//remove instance from subnet hosted list
+		if subnetFound == true {
+			instanceList := []string{}
+			err = json.Unmarshal([]byte(subnet.ObjectMeta.Annotations[`instancesHosted`]), &instanceList)
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse instance list`)
+			}
+			for i, f := range instanceList {
+				if f == ec2InstanceId {
+					instanceList = append(instanceList[:i], instanceList[i+1:]...)
+				}
+			}
+			newAnnotation, err := json.Marshal(instanceList)
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update instance list`)
+			}
+			subnet.ObjectMeta.Annotations[`instancesHosted`] = string(newAnnotation)
+			//check if any instances are still hosted by the subnet then remove finalizer
+			if subnet.ObjectMeta.Annotations[`instancesHosted`] == `[]` {
+				for i, f := range subnet.ObjectMeta.Finalizers {
+					if f == `ec2instances.ecc.aws.gotopple.com` {
+						subnet.ObjectMeta.Finalizers = append(
+							subnet.ObjectMeta.Finalizers[:i],
+							subnet.ObjectMeta.Finalizers[i+1:]...)
+					}
+				}
+			}
+			//update the subnet
+			err = r.Update(context.TODO(), subnet)
+			if err != nil {
+				r.events.Eventf(subnet, `Warning`, `ResourceUpdateFailure`, "Unable to remove annotation: %s", err.Error())
+				return reconcile.Result{}, err
+			}
+			r.events.Event(instance, `Normal`, `Deleted`, "Deleted Subnet annotation")
+		}
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `ec2instances.ecc.aws.gotopple.com` {
