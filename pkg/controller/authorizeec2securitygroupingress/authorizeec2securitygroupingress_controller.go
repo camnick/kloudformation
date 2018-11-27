@@ -98,25 +98,26 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		return reconcile.Result{}, err
 	}
 
-	// Need to lookup the security group to attach to
-	ec2SecurityGroup := &eccv1alpha1.EC2SecurityGroup{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup")
-			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
-	}
-
 	svc := ec2.New(r.sess)
 	// get the AuthorizeEC2SecurityGroupIngressId out of the annotations
 	// if absent then create
 	ingressAuthorized, ok := instance.ObjectMeta.Annotations[`ingressAuthorized`]
 	if !ok {
+
+		// Need to lookup the security group to attach to
+		ec2SecurityGroup := &eccv1alpha1.EC2SecurityGroup{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup")
+				return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS AuthorizeEC2SecurityGroupIngress in %s", *r.sess.Config.Region)
 		authorizeOutput, err := svc.AuthorizeSecurityGroupIngress(&ec2.AuthorizeSecurityGroupIngressInput{
 			CidrIp:     aws.String(instance.Spec.SourceCidrIp),
@@ -231,6 +232,21 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
+		// Need to lookup the security group to attach to
+		ec2SecurityGroupFound := true
+		ec2SecurityGroup := &eccv1alpha1.EC2SecurityGroup{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup- Will attempt to delete anyway")
+				ec2SecurityGroupFound = false
+			}
+			return reconcile.Result{}, err
+		} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
+		}
+
 		// check for other Finalizers
 		for _, f := range instance.ObjectMeta.Finalizers {
 			if f != `authorizeec2securitygroupingress.ecc.aws.gotopple.com` {
@@ -240,59 +256,60 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		}
 
 		// must delete
-		_, err = svc.RevokeSecurityGroupIngress(&ec2.RevokeSecurityGroupIngressInput{
-			CidrIp:     aws.String(instance.Spec.SourceCidrIp),
-			FromPort:   aws.Int64(instance.Spec.FromPort),
-			GroupId:    aws.String(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]),
-			IpProtocol: aws.String(instance.Spec.IpProtocol),
-			ToPort:     aws.Int64(instance.Spec.ToPort),
-		})
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the AuthorizeEC2SecurityGroupIngress: %s", err.Error())
+		if ec2SecurityGroupFound == true {
+			_, err = svc.RevokeSecurityGroupIngress(&ec2.RevokeSecurityGroupIngressInput{
+				CidrIp:     aws.String(instance.Spec.SourceCidrIp),
+				FromPort:   aws.Int64(instance.Spec.FromPort),
+				GroupId:    aws.String(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]),
+				IpProtocol: aws.String(instance.Spec.IpProtocol),
+				ToPort:     aws.Int64(instance.Spec.ToPort),
+			})
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the AuthorizeEC2SecurityGroupIngress: %s", err.Error())
 
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case `InvalidPermission.NotFound`:
-					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The AuthorizeEC2SecurityGroupIngress: %s was already deleted", err.Error())
-				default:
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					case `InvalidPermission.NotFound`:
+						// we want to keep going
+						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The AuthorizeEC2SecurityGroupIngress: %s was already deleted", err.Error())
+					default:
+						return reconcile.Result{}, err
+					}
+				} else {
 					return reconcile.Result{}, err
 				}
-			} else {
-				return reconcile.Result{}, err
 			}
-		}
 
-		//remove the rule name from security group annotations
-		ruleList := []string{}
-		err = json.Unmarshal([]byte(ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`]), &ruleList)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse ingress rules`)
-		}
-		for i, f := range ruleList {
-			if f == instance.Name {
-				ruleList = append(ruleList[:i], ruleList[i+1:]...)
+			//remove the rule name from security group annotations
+			ruleList := []string{}
+			err = json.Unmarshal([]byte(ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`]), &ruleList)
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse ingress rules`)
 			}
-		}
-		newAnnotation, err := json.Marshal(ruleList)
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update ingress rules`)
-		}
-		ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`] = string(newAnnotation)
+			for i, f := range ruleList {
+				if f == instance.Name {
+					ruleList = append(ruleList[:i], ruleList[i+1:]...)
+				}
+			}
+			newAnnotation, err := json.Marshal(ruleList)
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update ingress rules`)
+			}
+			ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`] = string(newAnnotation)
 
-		//check if any rules remain
-		if ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`] == `[]` {
-			for i, f := range ec2SecurityGroup.ObjectMeta.Finalizers {
-				if f == `authorizeec2securitygroupingress.ecc.aws.gotopple.com` {
-					ec2SecurityGroup.ObjectMeta.Finalizers = append(
-						ec2SecurityGroup.ObjectMeta.Finalizers[:i],
-						ec2SecurityGroup.ObjectMeta.Finalizers[i+1:]...)
+			//check if any rules remain
+			if ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`] == `[]` {
+				for i, f := range ec2SecurityGroup.ObjectMeta.Finalizers {
+					if f == `authorizeec2securitygroupingress.ecc.aws.gotopple.com` {
+						ec2SecurityGroup.ObjectMeta.Finalizers = append(
+							ec2SecurityGroup.ObjectMeta.Finalizers[:i],
+							ec2SecurityGroup.ObjectMeta.Finalizers[i+1:]...)
+					}
 				}
 			}
 		}
-
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `authorizeec2securitygroupingress.ecc.aws.gotopple.com` {
@@ -302,13 +319,14 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 			}
 		}
 
-		err = r.Update(context.TODO(), ec2SecurityGroup)
-		if err != nil {
-			r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
-			return reconcile.Result{}, err
+		if ec2SecurityGroupFound == true {
+			err = r.Update(context.TODO(), ec2SecurityGroup)
+			if err != nil {
+				r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+				return reconcile.Result{}, err
+			}
+			r.events.Eventf(ec2SecurityGroup, `Normal`, `Deleted`, "Deleted finalizer: %s", `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
 		}
-		r.events.Eventf(ec2SecurityGroup, `Normal`, `Deleted`, "Deleted finalizer: %s", `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
-
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
