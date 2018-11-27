@@ -97,37 +97,38 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		return reconcile.Result{}, err
 	}
 
-	eip := &eccv1alpha1.EIP{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.AllocationName, Namespace: instance.Namespace}, eip)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found")
-			return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP allocation has ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
-	}
-
-	ec2Instance := &eccv1alpha1.EC2Instance{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance")
-			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Instance has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
-	}
-
 	svc := ec2.New(r.sess)
 	// get the EIPAssociationId out of the annotations
 	// if absent then create
 	eipAssociationId, ok := instance.ObjectMeta.Annotations[`eipAssociationId`]
 	if !ok {
+
+		eip := &eccv1alpha1.EIP{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.AllocationName, Namespace: instance.Namespace}, eip)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found")
+				return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP allocation has ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+		}
+
+		ec2Instance := &eccv1alpha1.EC2Instance{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance")
+				return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Instance has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EIP Association in %s", *r.sess.Config.Region)
 		associateOutput, err := svc.AssociateAddress(&ec2.AssociateAddressInput{
 			AllocationId: aws.String(eip.ObjectMeta.Annotations[`eipAllocationId`]),
@@ -206,6 +207,33 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		// Make sure that there are tags to add before attempting to add them.
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
+		eipFound := true
+		eip := &eccv1alpha1.EIP{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.AllocationName, Namespace: instance.Namespace}, eip)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found- Deleting anyway")
+				eipFound = false
+			}
+		} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP allocation has ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+		}
+
+		ec2InstanceFound := true
+		ec2Instance := &eccv1alpha1.EC2Instance{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance- Deleting anyway")
+				ec2InstanceFound = false
+			}
+		} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Instance has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+		}
+
+
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
 			if instance.ObjectMeta.Finalizers[i] != `eipassociations.ecc.aws.gotopple.com` {
@@ -215,27 +243,28 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		}
 
 		// must delete
-		_, err = svc.DisassociateAddress(&ec2.DisassociateAddressInput{
-			AssociationId: aws.String(eipAssociationId),
-		})
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to disassociate the address: %s", err.Error())
+		if eipFound != true && ec2InstanceFound != true {
+			_, err = svc.DisassociateAddress(&ec2.DisassociateAddressInput{
+				AssociationId: aws.String(eipAssociationId),
+			})
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to disassociate the address: %s", err.Error())
 
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case `InvalidAssociationId.NotFound`:
-					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The address: %s was already disassociated", err.Error())
-				default:
-					return reconcile.Result{}, err
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					case `InvalidAssociationId.NotFound`:
+						// we want to keep going
+						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The address: %s was already disassociated", err.Error())
+					default:
+						return reconcile.Result{}, err
+					}
+					} else {
+						return reconcile.Result{}, err
+					}
 				}
-			} else {
-				return reconcile.Result{}, err
 			}
-		}
-
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `eipassociations.ecc.aws.gotopple.com` {
