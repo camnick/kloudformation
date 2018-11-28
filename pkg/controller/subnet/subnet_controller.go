@@ -97,24 +97,25 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	vpc := &eccv1alpha1.VPC{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC not ready")
-			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "vpcid annotation is 0 len")
-		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-	}
-
 	svc := ec2.New(r.sess)
 	// get the SubnetId out of the annotations
 	// if absent then create
 	subnetid, ok := instance.ObjectMeta.Annotations[`subnetid`]
 	if !ok {
+
+		vpc := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC not ready")
+				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "vpcid annotation is 0 len")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Subnet in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateSubnet(&ec2.CreateSubnetInput{
 			//			AssignIpv6AddressOnCreation: aws.Bool(instance.Spec.AssignIpv6AddressOnCreation),
@@ -218,6 +219,17 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
+		vpc := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC not ready- Deleting anyway")
+			}
+		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "vpcid annotation is 0 len")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+		}
 
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
