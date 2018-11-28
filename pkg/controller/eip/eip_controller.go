@@ -256,7 +256,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 				// Message from an error.
 				if aerr, ok := err.(awserr.Error); ok {
 					switch aerr.Code() {
-					case `InvalidAllocationId.NotFound`:
+					case `InvalidAllocationID.NotFound`:
 						// we want to keep going
 						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The EIP: %s was already deleted", err.Error())
 					default:
