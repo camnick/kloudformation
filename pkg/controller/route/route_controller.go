@@ -299,7 +299,6 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			if errors.IsNotFound(err) {
 				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find RouteTable- Will attempt to delete anyway")
 			}
-			return reconcile.Result{}, err
 		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `LookupFailure`, "RouteTable has no ID annotation- Will attempt to delete anyway")
 		}
