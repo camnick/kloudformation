@@ -222,7 +222,6 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found- Will attempt to delete anyway")
 				roleFound = false
 			}
-			return reconcile.Result{}, err
 		} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
 			roleFound = false

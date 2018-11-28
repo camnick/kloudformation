@@ -241,7 +241,6 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup- Will attempt to delete anyway")
 				ec2SecurityGroupFound = false
 			}
-			return reconcile.Result{}, err
 		} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
