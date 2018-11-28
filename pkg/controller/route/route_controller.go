@@ -315,7 +315,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `LookupFailure`, "InternetGateway has no ID annotation")
 		} else if err == nil {
-			r.events.Eventf(instance, `Warning`, `LookupFailure`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
+			r.events.Eventf(instance, `Warning`, `ResourceLookup`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
 			validTarget = true
 		}
 
@@ -328,7 +328,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		} else if len(natGateway.ObjectMeta.Annotations[`natGatewayId`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `LookupFailure`, "NATGateway has no ID annotation")
 		} else if err == nil {
-			r.events.Eventf(instance, `Warning`, `LookupFailure`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
+			r.events.Eventf(instance, `Warning`, `ResourceLookup`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
 			validTarget = true
 		}
 
