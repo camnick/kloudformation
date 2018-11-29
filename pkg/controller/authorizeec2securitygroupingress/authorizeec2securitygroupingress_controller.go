@@ -109,12 +109,12 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified EC2SecurityGroup")
 				return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
 			}
 			return reconcile.Result{}, err
 		} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified EC2SecurityGroup has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
 		}
 
@@ -127,14 +127,14 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 			ToPort:     aws.Int64(instance.Spec.ToPort),
 		})
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `AuthorizeFailure`, "Create failed: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Create failed: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 		if authorizeOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`AuthorizeOutput was nil`)
 		}
 		ingressAuthorized = "yes"
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS AuthorizeEC2SecurityGroupIngress for EC2SecurityGroup (%s)", ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`])
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS AuthorizeEC2SecurityGroupIngress for EC2SecurityGroup (%s)", ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`])
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`ingressAuthorized`] = ingressAuthorized
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
@@ -157,22 +157,22 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		ruleList := []string{}
 		err = json.Unmarshal([]byte(ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`]), &ruleList)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse ingress rules`)
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Failed to parse ingress rules`)
 		}
 		ruleList = append(ruleList, instance.Name)
 		newAnnotation, err := json.Marshal(ruleList)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update ingress rules`)
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Failed to update ingress rules`)
 		}
 		ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`] = string(newAnnotation)
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer to Security Group")
-		r.events.Event(ec2SecurityGroup, `Normal`, `Annotated`, "Added finalizer to Security Group")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer to EC2SecurityGroup")
+		r.events.Event(ec2SecurityGroup, `Normal`, `UpdateSuccess`, "Added finalizer to EC2SecurityGroup")
 
 		//update the Security Group, now that it's done.
 		err = r.Update(context.TODO(), ec2SecurityGroup)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't update Security Group annotations: %s`, err.Error())
-			r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, `Couldn't update Security Group annotations: %s`, err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Couldn't update EC2SecurityGroup annotations: %s`, err.Error())
+			r.events.Eventf(ec2SecurityGroup, `Warning`, `UpdateFailure`, `Couldn't update EC2SecurityGroup annotations: %s`, err.Error())
 		}
 
 		err = r.Update(context.TODO(), instance)
@@ -186,7 +186,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			revokeSecurityGroupIngressOutput, ierr := svc.RevokeSecurityGroupIngress(&ec2.RevokeSecurityGroupIngressInput{
@@ -228,7 +228,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -238,11 +238,11 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2SecurityGroup- Will attempt to delete anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find Specified EC2SecurityGroup- Will attempt to delete anyway")
 				ec2SecurityGroupFound = false
 			}
 		} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2SecurityGroup has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Specified EC2SecurityGroup has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`EC2SecurityGroup not ready`)
 		}
 
@@ -285,7 +285,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 			ruleList := []string{}
 			err = json.Unmarshal([]byte(ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`]), &ruleList)
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse ingress rules`)
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Failed to parse ingress rules`)
 			}
 			for i, f := range ruleList {
 				if f == instance.Name {
@@ -294,7 +294,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 			}
 			newAnnotation, err := json.Marshal(ruleList)
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update ingress rules`)
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Failed to update ingress rules`)
 			}
 			ec2SecurityGroup.ObjectMeta.Annotations[`ingressRules`] = string(newAnnotation)
 
@@ -321,18 +321,18 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		if ec2SecurityGroupFound == true {
 			err = r.Update(context.TODO(), ec2SecurityGroup)
 			if err != nil {
-				r.events.Eventf(ec2SecurityGroup, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+				r.events.Eventf(ec2SecurityGroup, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 				return reconcile.Result{}, err
 			}
-			r.events.Eventf(ec2SecurityGroup, `Normal`, `Deleted`, "Deleted finalizer: %s", `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
+			r.events.Eventf(ec2SecurityGroup, `Normal`, `DeleteSuccess`, "Deleted finalizer: %s", `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
 		}
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted AuthorizeEC2SecurityGroupIngress and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted AuthorizeEC2SecurityGroupIngress and removed finalizers")
 
 	}
 
