@@ -27,3 +27,6 @@ zz_generated.*
 # example yaml for testing
 example?.yml
 example?.yaml
+
+# other testing yamls
+*-test.yaml

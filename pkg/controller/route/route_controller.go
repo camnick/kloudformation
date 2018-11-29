@@ -98,62 +98,64 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	routeTable := &eccv1alpha1.RouteTable{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
-			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
-	}
-
-	validTarget := false
-
-	internetGateway := &eccv1alpha1.InternetGateway{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
-			//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
-		}
-		//return reconcile.Result{}, err
-	} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "InternetGateway has no ID annotation")
-		//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
-	} else if err == nil {
-		r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
-		validTarget = true
-	}
-
-	natGateway := &eccv1alpha1.NATGateway{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.NatGatewayName, Namespace: instance.Namespace}, natGateway)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find NATGateway")
-			//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
-		}
-		//return reconcile.Result{}, err
-	} else if len(natGateway.ObjectMeta.Annotations[`natGatewayId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "NATGateway has no ID annotation")
-		//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
-	} else if err == nil {
-		r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
-		validTarget = true
-	}
-
-	if validTarget != true {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready`)
-		return reconcile.Result{}, fmt.Errorf(`Route target not ready/found`)
-	}
 	svc := ec2.New(r.sess)
 	// get the RouteId out of the annotations
 	// if absent then create
 	routeCreated, ok := instance.ObjectMeta.Annotations[`routeCreated`]
 	if !ok {
+
+		routeTable := &eccv1alpha1.RouteTable{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
+				return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
+		}
+
+		validTarget := false
+
+		internetGateway := &eccv1alpha1.InternetGateway{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
+				//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+			}
+			//return reconcile.Result{}, err
+		} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "InternetGateway has no ID annotation")
+			//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
+		} else if err == nil {
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
+			validTarget = true
+		}
+
+		natGateway := &eccv1alpha1.NATGateway{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.NatGatewayName, Namespace: instance.Namespace}, natGateway)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find NATGateway")
+				//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
+			}
+			//return reconcile.Result{}, err
+		} else if len(natGateway.ObjectMeta.Annotations[`natGatewayId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "NATGateway has no ID annotation")
+			//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
+		} else if err == nil {
+			r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
+			validTarget = true
+		}
+
+		if validTarget != true {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready`)
+			return reconcile.Result{}, fmt.Errorf(`Route target not ready/found`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS Route in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRoute(&ec2.CreateRouteInput{
 			DestinationCidrBlock: aws.String(instance.Spec.DestinationCidrBlock),
@@ -290,6 +292,48 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			}
 		*/
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
+		routeTable := &eccv1alpha1.RouteTable{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find RouteTable- Will attempt to delete anyway")
+			}
+		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `LookupFailure`, "RouteTable has no ID annotation- Will attempt to delete anyway")
+		}
+
+		validTarget := false
+
+		internetGateway := &eccv1alpha1.InternetGateway{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find InternetGateway")
+			}
+		} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `LookupFailure`, "InternetGateway has no ID annotation")
+		} else if err == nil {
+			r.events.Eventf(instance, `Warning`, `ResourceLookup`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
+			validTarget = true
+		}
+
+		natGateway := &eccv1alpha1.NATGateway{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.NatGatewayName, Namespace: instance.Namespace}, natGateway)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find NATGateway")
+			}
+		} else if len(natGateway.ObjectMeta.Annotations[`natGatewayId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `LookupFailure`, "NATGateway has no ID annotation")
+		} else if err == nil {
+			r.events.Eventf(instance, `Warning`, `ResourceLookup`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
+			validTarget = true
+		}
+
+		if validTarget != true {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready- Will attempt to delete anyway`)
+		}
 
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {

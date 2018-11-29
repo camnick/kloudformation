@@ -97,37 +97,38 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	volume := &eccv1alpha1.Volume{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VolumeName, Namespace: instance.Namespace}, volume)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Volume")
-			return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(volume.ObjectMeta.Annotations[`volumeId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Volume has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
-	}
-
-	ec2Instance := &eccv1alpha1.EC2Instance{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance")
-			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Instance has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
-	}
-
 	svc := ec2.New(r.sess)
 	// get the EC2VolumeAttachmentId out of the annotations
 	// if absent then create
 	ec2VolumeAttachmentResponse, ok := instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`]
 	if !ok {
+
+		volume := &eccv1alpha1.Volume{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VolumeName, Namespace: instance.Namespace}, volume)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Volume")
+				return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(volume.ObjectMeta.Annotations[`volumeId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Volume has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
+		}
+
+		ec2Instance := &eccv1alpha1.EC2Instance{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance")
+				return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Instance has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EC2VolumeAttachment in %s", *r.sess.Config.Region)
 		attachOutput, err := svc.AttachVolume(&ec2.AttachVolumeInput{
 			Device:     aws.String(instance.Spec.DevicePath),
@@ -153,9 +154,10 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 		// Will appear to be 'attaching' later on can have this update to 'attached'
 		instance.ObjectMeta.Annotations[`ec2VolumeAttachmentResponse`] = ec2VolumeAttachmentResponse
 
-		// Label both involved resources with each other's IDs. For now. This only works w/ one volume per EC2Instance
+		// need to update the instance with this volume, and later on make it work with multiple volumes
 		ec2Instance.ObjectMeta.Annotations[`attachedVolumes`] = volume.ObjectMeta.Annotations[`volumeId`]
 
+		// need to update the volume object with this annotation
 		volume.ObjectMeta.Annotations[`instanceAttachedTo`] = ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]
 
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2volumeattachments.ecc.aws.gotopple.com`)
@@ -213,6 +215,30 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
+		volumeFound := true
+		volume := &eccv1alpha1.Volume{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VolumeName, Namespace: instance.Namespace}, volume)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Volume- Deleting anyway")
+				volumeFound = false
+			}
+		} else if len(volume.ObjectMeta.Annotations[`volumeId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Volume has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
+		}
+
+		ec2Instance := &eccv1alpha1.EC2Instance{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance- Deleting anyway")
+			}
+		} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EC2Instance has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
+		}
+
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
 			if instance.ObjectMeta.Finalizers[i] != `ec2volumeattachments.ecc.aws.gotopple.com` {
@@ -222,24 +248,26 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 		}
 
 		// must delete
-		_, err = svc.DetachVolume(&ec2.DetachVolumeInput{
-			VolumeId: aws.String(volume.ObjectMeta.Annotations[`volumeId`]),
-		})
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2VolumeAttachment: %s", err.Error())
+		if volumeFound == true {
+			_, err = svc.DetachVolume(&ec2.DetachVolumeInput{
+				VolumeId: aws.String(volume.ObjectMeta.Annotations[`volumeId`]),
+			})
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EC2VolumeAttachment: %s", err.Error())
 
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case `InvalidVolumeID.NotFound`:
-					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The EC2VolumeAttachment for Volume: %s was already deleted", err.Error())
-				default:
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					case `InvalidVolumeID.NotFound`:
+						// we want to keep going
+						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The EC2VolumeAttachment for Volume: %s was already deleted", err.Error())
+					default:
+						return reconcile.Result{}, err
+					}
+				} else {
 					return reconcile.Result{}, err
 				}
-			} else {
-				return reconcile.Result{}, err
 			}
 		}
 

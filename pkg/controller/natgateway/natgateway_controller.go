@@ -97,51 +97,52 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	subnet := &eccv1alpha1.Subnet{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
-			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
-	}
-
-	eip := &eccv1alpha1.EIP{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EIPAllocationName, Namespace: instance.Namespace}, eip)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found")
-			return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP allocation has ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
-	}
-
-	vpc := &eccv1alpha1.VPC{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: subnet.Spec.VPCName, Namespace: instance.Namespace}, vpc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
-			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-	}
-
 	//internetGateway := &eccv1alpha1.InternetGateway{}
 	svc := ec2.New(r.sess)
 	// get the NATGatewayId out of the annotations
 	// if absent then create
 	natGatewayId, ok := instance.ObjectMeta.Annotations[`natGatewayId`]
 	if !ok {
+
+		subnet := &eccv1alpha1.Subnet{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
+				return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+		}
+
+		eip := &eccv1alpha1.EIP{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EIPAllocationName, Namespace: instance.Namespace}, eip)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found")
+				return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP allocation has ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+		}
+
+		vpc := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: subnet.Spec.VPCName, Namespace: instance.Namespace}, vpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS NATGateway in %s", *r.sess.Config.Region)
 
 		createOutput, err := svc.CreateNatGateway(&ec2.CreateNatGatewayInput{
@@ -242,6 +243,39 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
+		subnet := &eccv1alpha1.Subnet{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet- Deleting anyway")
+			}
+		} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+		}
+
+		eip := &eccv1alpha1.EIP{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EIPAllocationName, Namespace: instance.Namespace}, eip)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found- Deleting anyway")
+			}
+		} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP allocation has ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
+		}
+
+		vpc := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: subnet.Spec.VPCName, Namespace: instance.Namespace}, vpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC- Deleting anyway")
+			}
+		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+		}
 
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
