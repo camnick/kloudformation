@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	aws "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	awssession "github.com/aws/aws-sdk-go/aws/session"
 	ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	eccv1alpha1 "github.com/gotopple/kloudformation/pkg/apis/ecc/v1alpha1"
@@ -203,7 +204,19 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 		})
 		if err != nil {
 			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the VPC: %s", err.Error())
-			return reconcile.Result{}, err
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case `InvalidVpcID.NotFound`:
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The VPC: %s was already deleted", err.Error())
+				default:
+					return reconcile.Result{}, err
+				}
+			} else {
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				fmt.Println(err.Error())
+				return reconcile.Result{}, err
+			}
 		}
 		if deleteOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`DeleteVPCOutput was nil`)
