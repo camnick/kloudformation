@@ -238,7 +238,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2SecurityGroupName, Namespace: instance.Namespace}, ec2SecurityGroup)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find Specified EC2SecurityGroup- Will attempt to delete anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find Specified EC2SecurityGroup- Deleting anyway")
 				ec2SecurityGroupFound = false
 			}
 		} else if len(ec2SecurityGroup.ObjectMeta.Annotations[`ec2SecurityGroupId`]) <= 0 {

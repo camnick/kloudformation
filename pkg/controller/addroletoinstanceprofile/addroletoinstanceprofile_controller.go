@@ -219,11 +219,11 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified Role not found- Will attempt to delete anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified Role not found- Deleting anyway")
 				roleFound = false
 			}
 		} else if len(role.ObjectMeta.Annotations[`awsRoleName`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Specified Role not ready")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Specified Role no AWS Role name annotation")
 			roleFound = false
 		}
 
@@ -232,11 +232,11 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamInstanceProfileName, Namespace: instance.Namespace}, instanceProfile)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified IAMInstanceProfile not found")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified IAMInstanceProfile not found- Deleting anyway")
 				instanceProfileFound = false
 			}
 		} else if len(instanceProfile.ObjectMeta.Annotations[`awsInstanceProfileName`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Specified IAMInstanceProfile not ready")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Specified IAMInstanceProfile has no AWS Instance Profile name annotation")
 			instanceProfileFound = false
 		}
 
