@@ -1,0 +1,14 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: AuthorizeEC2SecurityGroupIngress
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ingressrule-walkthrough-http
+  namespace: kloudformation
+spec:
+  ruleName: http
+  sourceCidrIp: 0.0.0.0/0
+  ec2SecurityGroupName: ec2securitygroup-walkthrough
+  fromPort: 8888
+  toPort: 8888
+  ipProtocol: tcp

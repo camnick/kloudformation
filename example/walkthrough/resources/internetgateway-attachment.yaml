@@ -1,0 +1,10 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: InternetGatewayAttachment
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: internetgatewayattachment-walkthrough
+  namespace: kloudformation
+spec:
+  vpcName: vpc-walkthrough
+  internetGatewayName: internetgateway-walkthrough

@@ -97,24 +97,25 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, err
 	}
 
-	vpc := &eccv1alpha1.VPC{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find VPC")
-			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-	}
-
 	svc := ec2.New(r.sess)
 	// get the EIPId out of the annotations
 	// if absent then create
 	eipAllocationId, ok := instance.ObjectMeta.Annotations[`eipAllocationId`]
 	if !ok {
+
+		vpc := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find VPC")
+				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS EIP in %s", *r.sess.Config.Region)
 		createOutput, err := svc.AllocateAddress(&ec2.AllocateAddressInput{
 			Domain: aws.String("vpc"),
@@ -221,6 +222,20 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
+		vpcFound := true
+		vpc := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find VPC- Deleting anyway")
+				vpcFound = false
+			}
+		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+		}
+
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
 			if instance.ObjectMeta.Finalizers[i] != `eips.ecc.aws.gotopple.com` {
@@ -230,27 +245,28 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 
 		// must delete
-		_, err = svc.ReleaseAddress(&ec2.ReleaseAddressInput{
-			AllocationId: aws.String(instance.ObjectMeta.Annotations[`eipAllocationId`]),
-		})
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EIP: %s", err.Error())
+		if vpcFound == true {
+			_, err = svc.ReleaseAddress(&ec2.ReleaseAddressInput{
+				AllocationId: aws.String(instance.ObjectMeta.Annotations[`eipAllocationId`]),
+			})
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the EIP: %s", err.Error())
 
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case `InvalidAllocationId.NotFound`:
-					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The EIP: %s was already deleted", err.Error())
-				default:
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					case `InvalidAllocationID.NotFound`:
+						// we want to keep going
+						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The EIP: %s was already deleted", err.Error())
+					default:
+						return reconcile.Result{}, err
+					}
+				} else {
 					return reconcile.Result{}, err
 				}
-			} else {
-				return reconcile.Result{}, err
 			}
 		}
-
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `eips.ecc.aws.gotopple.com` {

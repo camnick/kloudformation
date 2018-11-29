@@ -30,9 +30,9 @@ type RouteSpec struct {
 	DestinationCidrBlock string `json:"destinationCidrBlock"`
 	//DestinationIpv6CidrBlock      string `json:"destinationIpv6CidrBlock"` //
 	//EgressOnlyInternetGatewayName string `json:"egressOnlyInternetGatewayId"`
-	GatewayName string `json:"gatewayName"` //InternetGateway is what this is about.
+	GatewayName string `json:"gatewayName,omitempty"` //InternetGateway is what this is about.
 	//InstanceName                  string `json:"instanceId"`
-	//NatGatewayName                string `json:"natGatewayId"`
+	NatGatewayName string `json:"natGatewayName,omitempty"`
 	//NetworkInterfaceName          string `json:"networkInterfaceId"`
 	RouteTableName string `json:"routeTableName"`
 	//VpcPeeringConnectionName      string `json:"vpcPeeringConnectionId"`

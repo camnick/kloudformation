@@ -1,0 +1,9 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2KeyPair
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: keypair-walkthrough
+  namespace: kloudformation
+spec:
+  ec2KeyPairName: Kloudformation-EC2 Key Pair

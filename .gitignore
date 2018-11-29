@@ -24,5 +24,9 @@ zz_generated.*
 *.swo
 *~
 
-#Misc
-temp.go
+# example yaml for testing
+example?.yml
+example?.yaml
+
+# other testing yamls
+*-test.yaml

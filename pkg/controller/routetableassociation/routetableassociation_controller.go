@@ -96,38 +96,40 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	// check if subnet is ready and confirm id is good
-	subnet := &eccv1alpha1.Subnet{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
-			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
-	}
-	// check if route table is ready and confirm id is good
-	routeTable := &eccv1alpha1.RouteTable{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
-			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
-	}
 
 	svc := ec2.New(r.sess)
 	// get the RouteTableAssociationId out of the annotations
 	// if absent then create
 	routeTableAssociationId, ok := instance.ObjectMeta.Annotations[`routeTableAssociationId`]
 	if !ok {
+
+		// check if subnet is ready and confirm id is good
+		subnet := &eccv1alpha1.Subnet{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
+				return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+		}
+		// check if route table is ready and confirm id is good
+		routeTable := &eccv1alpha1.RouteTable{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
+				return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTableAssociation in %s", *r.sess.Config.Region)
 		associateOutput, err := svc.AssociateRouteTable(&ec2.AssociateRouteTableInput{
 			RouteTableId: aws.String(routeTable.ObjectMeta.Annotations[`routeTableId`]),
@@ -205,6 +207,29 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
+		// check if subnet is ready and confirm id is good
+		subnet := &eccv1alpha1.Subnet{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet- Deleting anway")
+			}
+		} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
+		}
+		// check if route table is ready and confirm id is good
+		routeTable := &eccv1alpha1.RouteTable{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable- Deleting anyway")
+			}
+		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
+		}
 
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {

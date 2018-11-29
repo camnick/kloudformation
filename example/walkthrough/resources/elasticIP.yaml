@@ -1,0 +1,25 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EIP
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: eip-natgateway-walkthrough
+  namespace: kloudformation
+spec:
+  vpcName: vpc-walkthrough
+  tags:
+    - key: Name
+      value: Kloudformation- EIP for NAT Gateway
+---
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EIP
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: eip-ec2instance-walkthrough
+  namespace: kloudformation
+spec:
+  vpcName: vpc-walkthrough
+  tags:
+    - key: Name
+      value: Kloudformation- EIP for EC2 Instance

@@ -97,24 +97,25 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	vpc := &eccv1alpha1.VPC{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
-			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
-		return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
-	}
-
 	svc := ec2.New(r.sess)
 	// get the RouteTableId out of the annotations
 	// if absent then create
 	routeTableId, ok := instance.ObjectMeta.Annotations[`routeTableId`]
 	if !ok {
+
+		vpc := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS RouteTable in %s", *r.sess.Config.Region)
 		createOutput, err := svc.CreateRouteTable(&ec2.CreateRouteTableInput{
 			VpcId: aws.String(vpc.ObjectMeta.Annotations[`vpcid`]),
@@ -211,6 +212,17 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
+
+		vpc := &eccv1alpha1.VPC{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC- Deleting anyway")
+			}
+		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
+			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
+		}
 
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {

@@ -97,38 +97,39 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	role := &iamv1alpha1.Role{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found: %s", err.Error())
-			return reconcile.Result{}, fmt.Errorf(`Role not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
-		return reconcile.Result{}, fmt.Errorf(`Role not ready`)
-	}
-
-	policy := &iamv1alpha1.IAMPolicy{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamPolicyName, Namespace: instance.Namespace}, policy)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not found: %s", err.Error())
-			return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
-		}
-		return reconcile.Result{}, err
-	} else if len(policy.ObjectMeta.Annotations[`iamPolicyArn`]) <= 0 {
-		r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not ready")
-		return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
-	}
-
 	svc := iam.New(r.sess)
 
 	// get the IAMAttachRolePolicyId out of the annotations
 	// if absent then create
 	iamRolePolicyAttached, ok := instance.ObjectMeta.Annotations[`iamRolePolicyAttached`]
 	if !ok {
+
+		role := &iamv1alpha1.Role{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found: %s", err.Error())
+				return reconcile.Result{}, fmt.Errorf(`Role not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
+			return reconcile.Result{}, fmt.Errorf(`Role not ready`)
+		}
+
+		policy := &iamv1alpha1.IAMPolicy{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamPolicyName, Namespace: instance.Namespace}, policy)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not found: %s", err.Error())
+				return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
+			}
+			return reconcile.Result{}, err
+		} else if len(policy.ObjectMeta.Annotations[`iamPolicyArn`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not ready")
+			return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
+		}
+
 		r.events.Eventf(instance, `Normal`, `CreateAttempt`, "Creating AWS IAMAttachRolePolicy in %s", *r.sess.Config.Region)
 		createOutput, err := svc.AttachRolePolicy(&iam.AttachRolePolicyInput{
 			PolicyArn: aws.String(policy.ObjectMeta.Annotations[`iamPolicyArn`]),
@@ -202,6 +203,32 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
+		roleFound := true
+		role := &iamv1alpha1.Role{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found- Deleting anyway")
+				roleFound = false
+			}
+		} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
+			return reconcile.Result{}, fmt.Errorf(`Role not ready`)
+		}
+
+		policyFound := true
+		policy := &iamv1alpha1.IAMPolicy{}
+		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamPolicyName, Namespace: instance.Namespace}, policy)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not found- Deleting anyway")
+				policyFound = false
+			}
+		} else if len(policy.ObjectMeta.Annotations[`iamPolicyArn`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not ready")
+			return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
+		}
+
 		// check for other Finalizers
 		for i := range instance.ObjectMeta.Finalizers {
 			if instance.ObjectMeta.Finalizers[i] != `iamattachrolepolicies.iam.aws.gotopple.com` {
@@ -211,28 +238,29 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		}
 
 		// must delete
-		_, err = svc.DetachRolePolicy(&iam.DetachRolePolicyInput{
-			PolicyArn: aws.String(policy.ObjectMeta.Annotations[`iamPolicyArn`]),
-			RoleName:  aws.String(role.Spec.RoleName),
-		})
-		if err != nil {
-			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the IAMAttachRolePolicy: %s", err.Error())
+		if roleFound == true && policyFound == true {
+			_, err = svc.DetachRolePolicy(&iam.DetachRolePolicyInput{
+				PolicyArn: aws.String(policy.ObjectMeta.Annotations[`iamPolicyArn`]),
+				RoleName:  aws.String(role.Spec.RoleName),
+			})
+			if err != nil {
+				r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Unable to delete the IAMAttachRolePolicy: %s", err.Error())
 
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case `InvalidInstanceProfileID.NotFound`:
-					// we want to keep going
-					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The IAMAttachRolePolicy: %s was already deleted", err.Error())
-				default:
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					case `InvalidInstanceProfileID.NotFound`:
+						// we want to keep going
+						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The IAMAttachRolePolicy: %s was already deleted", err.Error())
+					default:
+						return reconcile.Result{}, err
+					}
+				} else {
 					return reconcile.Result{}, err
 				}
-			} else {
-				return reconcile.Result{}, err
 			}
 		}
-
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
 			if f == `iamattachrolepolicies.iam.aws.gotopple.com` {
