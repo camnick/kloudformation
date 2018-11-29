@@ -108,12 +108,12 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified Role not found")
 				return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 			}
 			return reconcile.Result{}, err
 		} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified Role not ready")
 			return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 		}
 
@@ -121,12 +121,12 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamInstanceProfileName, Namespace: instance.Namespace}, instanceProfile)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMInstanceProfile not found")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified IAMInstanceProfile not found")
 				return reconcile.Result{}, fmt.Errorf(`IAMInstanceProfile not ready`)
 			}
 			return reconcile.Result{}, err
-		} else if len(instanceProfile.ObjectMeta.Annotations[`iamInstanceProfileArn`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMInstanceProfile not ready")
+		} else if len(instanceProfile.ObjectMeta.Annotations[`awsInstanceProfileName`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified IAMInstanceProfile not ready")
 			return reconcile.Result{}, fmt.Errorf(`IAMInstanceProfile not ready`)
 		}
 
@@ -144,7 +144,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		}
 
 		iamRoleAddedToInstanceProfile = "yes"
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS AddRoleToInstanceProfile")
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS AddRoleToInstanceProfile")
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`iamRoleAddedToInstanceProfile`] = iamRoleAddedToInstanceProfile
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `addroletoinstanceprofiles.iam.aws.gotopple.com`)
@@ -199,18 +199,18 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		instanceProfile.ObjectMeta.Annotations[`assignedAwsRoleName`] = role.ObjectMeta.Annotations[`awsRoleName`]
 		err = r.Update(context.TODO(), instanceProfile)
 		if err != nil {
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 		}
-		r.events.Event(instanceProfile, `Normal`, `Annotated`, "Added assgned AWS Role Name to Annotations")
+		r.events.Event(instanceProfile, `Normal`, `UpdateSuccess`, "Added assgned AWS Role Name to Annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -219,11 +219,11 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found- Will attempt to delete anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified Role not found- Will attempt to delete anyway")
 				roleFound = false
 			}
-		} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
+		} else if len(role.ObjectMeta.Annotations[`awsRoleName`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Specified Role not ready")
 			roleFound = false
 		}
 
@@ -232,11 +232,11 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamInstanceProfileName, Namespace: instance.Namespace}, instanceProfile)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMInstanceProfile not found")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified IAMInstanceProfile not found")
 				instanceProfileFound = false
 			}
-		} else if len(instanceProfile.ObjectMeta.Annotations[`iamInstanceProfileArn`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMInstanceProfile not ready")
+		} else if len(instanceProfile.ObjectMeta.Annotations[`awsInstanceProfileName`]) <= 0 {
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Specified IAMInstanceProfile not ready")
 			instanceProfileFound = false
 		}
 
@@ -272,7 +272,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 				}
 			}
 		} else {
-			r.events.Eventf(instance, `Warning`, `AlreadyDeleted`, `Role or Instance Profile wasn't found- Resource will be deleted`)
+			r.events.Eventf(instance, `Warning`, `AlreadyDeleted`, `Specified Role or Instance Profile wasn't found- Resource will be deleted`)
 		}
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
@@ -286,10 +286,10 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted AddRoleToInstanceProfile and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted AddRoleToInstanceProfile and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil
