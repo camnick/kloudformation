@@ -183,30 +183,6 @@ spec:
 apiVersion: ecc.aws.gotopple.com/v1alpha1
 kind: Subnet
 metadata:
-  name: example-network-public-b
-spec:
-  vpcName: example-network
-  availabilityZone: "us-west-2b"
-  cidrBlock: "10.20.120.0/24"
-  tags:
-   - key: Name
-     value: public-b
----
-apiVersion: ecc.aws.gotopple.com/v1alpha1
-kind: Subnet
-metadata:
-  name: example-network-public-c
-spec:
-  vpcName: example-network
-  availabilityZone: "us-west-2c"
-  cidrBlock: "10.20.130.0/24"
-  tags:
-   - key: Name
-     value: public-c
----
-apiVersion: ecc.aws.gotopple.com/v1alpha1
-kind: Subnet
-metadata:
   name: example-network-public-a
 spec:
   vpcName: example-network
@@ -315,4 +291,26 @@ spec:
   maxSessionDuration: 3600
   path: /testRoles/
   roleName: TestRoleName
+---
+apiVersion: swarm.aws.gotopple.com/v1alpha1
+kind: DockerSwarm
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: dockerswarm-sample
+spec:
+  numManagers: 3
+  numWorkers: 5
+  managerSize: t2.micro
+  workerSize: t2.micro
+---
+apiVersion: test.aws.gotopple.com/v1alpha1
+kind: Test
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: test-sample
+spec:
+  # Add fields here
+  foo: bar
 ---
