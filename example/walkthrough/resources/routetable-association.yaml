@@ -1,0 +1,10 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: RouteTableAssociation
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: routetableassociation-walkthrough
+  namespace: kloudformation
+spec:
+  subnetName: subnet-walkthrough
+  routeTableName: routetable-walkthrough

@@ -1,0 +1,23 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2Instance
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ec2instance-walkthrough
+  namespace: kloudformation
+spec:
+  imageId: ami-6cd6f714 #Amazon Linux
+  instanceType: t2.small
+  subnetName: subnet-walkthrough
+  userData: |
+            #!/bin/bash
+            sudo yum update -y
+            sudo yum install docker -y
+            sudo service docker start
+            sudo usermod -a -G docker ec2-user
+            sudo docker run -d -p 8888:8080 tomcat:8.0
+  ec2KeyPair: keypair-walkthrough
+  ec2SecurityGroupName: ec2securitygroup-walkthrough
+  tags:
+    - key: Name
+      value: Kloudformation-Walkthough

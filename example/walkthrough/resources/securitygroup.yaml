@@ -1,0 +1,14 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: EC2SecurityGroup
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: ec2securitygroup-walkthrough
+  namespace: kloudformation
+spec:
+  ec2SecurityGroupName: Kloudformation-Security Group
+  vpcName: vpc-walkthrough
+  description: An exciting Kloudformation EC2 Security Group
+  tags:
+    - key: Project
+      value: Kloudformation

@@ -1,0 +1,13 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: NATGateway
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: natgateway-walkthrough
+  namespace: kloudformation
+spec:
+  subnetName: subnet-walkthrough
+  eipAllocationName: eip-natgateway-walkthrough
+  tags:
+    - key: Name
+      value: Kloudformation-NAT Gateway

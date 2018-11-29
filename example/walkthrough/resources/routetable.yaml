@@ -1,0 +1,14 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: RouteTable
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: routetable-walkthrough
+  namespace: kloudformation
+spec:
+  vpcName: vpc-walkthrough
+  tags:
+    - key: sample-key
+      value: sample-value
+    - key: Name
+      value: Kloudformation-Route Table

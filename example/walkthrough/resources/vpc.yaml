@@ -1,0 +1,13 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: VPC
+metadata:
+  name: vpc-walkthrough
+  namespace: kloudformation
+spec:
+  cidrBlock: "10.10.0.0/16"
+  enableDnsSupport: true
+  enableDnsHostnames: true
+  instanceTenancy: default
+  tags:
+    - key: Name
+      value: Kloudformation-VPC

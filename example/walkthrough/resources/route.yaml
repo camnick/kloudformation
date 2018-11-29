@@ -1,0 +1,11 @@
+apiVersion: ecc.aws.gotopple.com/v1alpha1
+kind: Route
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: route-walkthrough
+  namespace: kloudformation
+spec:
+  destinationCidrBlock: "0.0.0.0/0"
+  routeTableName: routetable-walkthrough
+  gatewayName: internetgateway-walkthrough
