@@ -107,7 +107,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC")
 				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 			}
 			return reconcile.Result{}, err
@@ -135,7 +135,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 		}
 		internetGatewayId = *createGatewayOutput.InternetGateway.InternetGatewayId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS InternetGateway (%s)", internetGatewayId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS InternetGateway (%s)", internetGatewayId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`internetGatewayId`] = internetGatewayId
 
@@ -153,7 +153,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteInternetGateway(&ec2.DeleteInternetGatewayInput{
@@ -191,7 +191,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
@@ -208,13 +208,13 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 				Tags:      ts,
 			})
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Tagging failed: %s", err.Error())
 				return reconcile.Result{}, err
 			}
 			if tagOutput == nil {
 				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
 			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -223,7 +223,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find VPC- Deleting anyway")
 				vpcFound = false
 			}
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
@@ -241,7 +241,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 
 		// must delete
 		if vpcFound == true {
-			r.events.Eventf(instance, `Normal`, `ResourceDeleteAttempt`, "Deleting AWS InternetGateway (%s)", instance.ObjectMeta.Annotations[`internetGatewayId`])
+			r.events.Eventf(instance, `Normal`, `DeleteAttempt`, "Deleting AWS InternetGateway (%s)", instance.ObjectMeta.Annotations[`internetGatewayId`])
 			_, err = svc.DeleteInternetGateway(&ec2.DeleteInternetGatewayInput{
 				InternetGatewayId: aws.String(internetGatewayId),
 			})
@@ -253,13 +253,12 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 				if aerr, ok := err.(awserr.Error); ok {
 					switch aerr.Code() {
 					case `DependencyViolation`:
-						r.events.Eventf(instance, `Normal`, `DependencyViolation`, `The InternetGateway cannot be deleted: DependencyViolation: %s`, err.Error())
+						r.events.Eventf(instance, `Normal`, `DependencyViolation`, `The InternetGateway cannot be deleted: %s`, err.Error())
 						return reconcile.Result{}, err
 					case `InvalidInternetGatewayID.NotFound`:
 						// we want to keep going
 						// event type was changed from 'Success' to 'Normal', because i got an error that 'Success' wasn't supported
 						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The InternetGateway: %s was already deleted", err.Error())
-						return reconcile.Result{}, err
 					default:
 						return reconcile.Result{}, err
 					}
@@ -280,10 +279,10 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted InternetGateway and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted InternetGateway and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil
