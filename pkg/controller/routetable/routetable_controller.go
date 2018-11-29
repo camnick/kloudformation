@@ -241,7 +241,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidRouteTableID.NotFound` :
+				case `InvalidRouteTableID.NotFound`:
 					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The RouteTable: %s was already deleted", err.Error())
 				default:
 					return reconcile.Result{}, err
@@ -249,8 +249,6 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			} else {
 				return reconcile.Result{}, err
 			}
-
-			return reconcile.Result{}, err
 		}
 		if deleteOutput == nil {
 			return reconcile.Result{}, fmt.Errorf(`DeleteRouteTableOutput was nil`)
