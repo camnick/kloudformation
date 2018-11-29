@@ -216,7 +216,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidRoleID.NotFound`:
+				case `NoSuchEntity`:
 					// we want to keep going
 					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The Role: %s was already deleted", err.Error())
 				default:

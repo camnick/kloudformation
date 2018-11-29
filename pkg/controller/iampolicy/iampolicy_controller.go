@@ -214,7 +214,7 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidPolicyID.NotFound`:
+				case `NoSuchEntity`:
 					// we want to keep going
 					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The Policy: %s was already deleted", err.Error())
 				default:

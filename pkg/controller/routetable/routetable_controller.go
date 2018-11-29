@@ -241,13 +241,13 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
+				case `InvalidRouteTableID.NotFound` :
+					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The RouteTable: %s was already deleted", err.Error())
 				default:
-					r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s`, aerr.Error())
+					return reconcile.Result{}, err
 				}
 			} else {
-				// Print the error, cast err to awserr.Error to get the Code and
-				// Message from an error.
-				r.events.Eventf(instance, `Warning`, `DeleteFailure`, `Delete Failure: %s`, aerr.Error())
+				return reconcile.Result{}, err
 			}
 
 			return reconcile.Result{}, err

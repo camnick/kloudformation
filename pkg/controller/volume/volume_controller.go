@@ -234,7 +234,7 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidVolumeID.NotFound`:
+				case `InvalidVolume.NotFound`:
 					// we want to keep going
 					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The Volume: %s was already deleted", err.Error())
 				default:

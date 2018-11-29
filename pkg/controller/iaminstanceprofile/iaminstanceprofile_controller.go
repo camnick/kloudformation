@@ -213,7 +213,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidInstanceProfileID.NotFound`:
+				case `NoSuchEntity`:
 					// we want to keep going
 					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The IAMInstanceProfile: %s was already deleted", err.Error())
 				default:

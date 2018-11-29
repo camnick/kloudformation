@@ -250,7 +250,7 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 			// Message from an error.
 			if aerr, ok := err.(awserr.Error); ok {
 				switch aerr.Code() {
-				case `InvalidRouteTableAssociationID.NotFound`:
+				case `InvalidAssociationID.NotFound`:
 					// we want to keep going
 					r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The RouteTableAssociation: %s was already deleted", err.Error())
 				default:
