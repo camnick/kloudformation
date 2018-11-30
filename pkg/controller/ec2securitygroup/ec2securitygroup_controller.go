@@ -107,7 +107,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find specified VPC")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC")
 				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 			}
 			return reconcile.Result{}, err
@@ -222,7 +222,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find specified VPC- Will attempt delete anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC- Will attempt delete anyway")
 				vpcFound = false
 			}
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
