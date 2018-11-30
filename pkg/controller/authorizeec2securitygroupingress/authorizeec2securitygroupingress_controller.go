@@ -273,6 +273,8 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 					case `InvalidGroup.NotFound`:
 						// we want to keep going
 						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The AuthorizeEC2SecurityGroupIngress: %s was already deleted", err.Error())
+					case `InvalidPermission.NotFound`:
+						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, `The specified rule does not exist in the AWS Security Group- Deleting anyway`)
 					default:
 						return reconcile.Result{}, err
 					}
@@ -324,7 +326,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 				r.events.Eventf(ec2SecurityGroup, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 				return reconcile.Result{}, err
 			}
-			r.events.Eventf(ec2SecurityGroup, `Normal`, `DeleteSuccess`, "Deleted finalizer: %s", `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
+			r.events.Eventf(ec2SecurityGroup, `Normal`, `UpdateSuccess`, "Deleted finalizer: %s", `authorizeec2securitygroupingress.ecc.aws.gotopple.com`)
 		}
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
