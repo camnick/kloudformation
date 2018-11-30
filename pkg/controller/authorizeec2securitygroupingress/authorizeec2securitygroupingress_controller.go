@@ -270,7 +270,7 @@ func (r *ReconcileAuthorizeEC2SecurityGroupIngress) Reconcile(request reconcile.
 				// Message from an error.
 				if aerr, ok := err.(awserr.Error); ok {
 					switch aerr.Code() {
-					case `InvalidPermission.NotFound`:
+					case `InvalidGroup.NotFound`:
 						// we want to keep going
 						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The AuthorizeEC2SecurityGroupIngress: %s was already deleted", err.Error())
 					default:
