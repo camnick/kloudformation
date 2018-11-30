@@ -107,7 +107,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC")
 				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 			}
 			return reconcile.Result{}, err
@@ -134,7 +134,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		routeTableId = *createOutput.RouteTable.RouteTableId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTable (%s)", routeTableId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS RouteTable (%s)", routeTableId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`routeTableId`] = routeTableId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routetables.ecc.aws.gotopple.com`)
@@ -150,7 +150,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteRouteTable(&ec2.DeleteRouteTableInput{
@@ -186,7 +186,7 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
@@ -203,13 +203,13 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 				Tags:      ts,
 			})
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Tagging failed: %s", err.Error())
 				return reconcile.Result{}, err
 			}
 			if tagOutput == nil {
 				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
 			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -217,10 +217,10 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specifed VPC- Deleting anyway")
 			}
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "VPC has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 
@@ -266,10 +266,10 @@ func (r *ReconcileRouteTable) Reconcile(request reconcile.Request) (reconcile.Re
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted RouteTable and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted RouteTable and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

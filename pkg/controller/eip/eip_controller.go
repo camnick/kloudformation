@@ -107,7 +107,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find VPC")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC")
 				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 			}
 			return reconcile.Result{}, err
@@ -140,7 +140,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 		eipPublicIp := *createOutput.PublicIp
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EIP %s, (%s)", eipPublicIp, eipAllocationId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS EIP %s, (%s)", eipPublicIp, eipAllocationId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`eipAllocationId`] = eipAllocationId
 		instance.ObjectMeta.Annotations[`eipPublicIp`] = eipPublicIp
@@ -157,7 +157,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.ReleaseAddress(&ec2.ReleaseAddressInput{
@@ -195,7 +195,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
@@ -212,13 +212,13 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 				Tags:      ts,
 			})
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Tagging failed: %s", err.Error())
 				return reconcile.Result{}, err
 			}
 			if tagOutput == nil {
 				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
 			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added tags")
 		}
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
@@ -228,7 +228,7 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VpcName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find VPC- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC- Deleting anyway")
 				vpcFound = false
 			}
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
@@ -279,10 +279,10 @@ func (r *ReconcileEIP) Reconcile(request reconcile.Request) (reconcile.Result, e
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EIP and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeletedSuccess`, "Deleted EIP and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

@@ -108,12 +108,12 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specifed Subnet")
 				return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 			}
 			return reconcile.Result{}, err
 		} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified Subnet has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 		}
 		// check if route table is ready and confirm id is good
@@ -121,12 +121,12 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified RouteTable")
 				return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 			}
 			return reconcile.Result{}, err
 		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified RouteTable has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 		}
 
@@ -149,7 +149,7 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		}
 		routeTableAssociationId = *associateOutput.AssociationId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS RouteTableAssociation (%s)", routeTableAssociationId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS RouteTableAssociation (%s)", routeTableAssociationId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`routeTableAssociationId`] = routeTableAssociationId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `routetableassociations.ecc.aws.gotopple.com`)
@@ -165,7 +165,7 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			disassociateOutput, ierr := svc.DisassociateRouteTable(&ec2.DisassociateRouteTableInput{
@@ -204,7 +204,7 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -213,10 +213,10 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet- Deleting anway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified Subnet- Deleting anway")
 			}
 		} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified Subnet has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 		}
 		// check if route table is ready and confirm id is good
@@ -224,10 +224,10 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified RouteTable- Deleting anyway")
 			}
 		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specifed RouteTable has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 		}
 
@@ -273,10 +273,10 @@ func (r *ReconcileRouteTableAssociation) Reconcile(request reconcile.Request) (r
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted RouteTableAssociation and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted RouteTableAssociation and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

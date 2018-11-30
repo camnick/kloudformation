@@ -107,7 +107,7 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VolumeName, Namespace: instance.Namespace}, volume)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Volume")
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find specified Volume")
 				return reconcile.Result{}, fmt.Errorf(`Volume not ready`)
 			}
 			return reconcile.Result{}, err
@@ -148,7 +148,7 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 			return reconcile.Result{}, fmt.Errorf(`attachOutput.State was nil`)
 		}
 		ec2VolumeAttachmentResponse = *attachOutput.State
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2VolumeAttachment for VolumeId %s ", volume.ObjectMeta.Annotations[`volumeId`])
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS EC2VolumeAttachment for VolumeId %s ", volume.ObjectMeta.Annotations[`volumeId`])
 		instance.ObjectMeta.Annotations = make(map[string]string)
 
 		// Will appear to be 'attaching' later on can have this update to 'attached'
@@ -173,7 +173,7 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			detachOutput, ierr := svc.DetachVolume(&ec2.DetachVolumeInput{
@@ -211,7 +211,7 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -220,7 +220,7 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VolumeName, Namespace: instance.Namespace}, volume)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Volume- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find specified Volume- Deleting anyway")
 				volumeFound = false
 			}
 		} else if len(volume.ObjectMeta.Annotations[`volumeId`]) <= 0 {
@@ -283,10 +283,10 @@ func (r *ReconcileEC2VolumeAttachment) Reconcile(request reconcile.Request) (rec
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2VolumeAttachment and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted EC2VolumeAttachment and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

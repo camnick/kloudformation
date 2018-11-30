@@ -134,7 +134,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 		}
 		iamInstanceProfileName := *createOutput.InstanceProfile.InstanceProfileName
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMInstanceProfile (%s)", iamInstanceProfileId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS IAMInstanceProfile (%s)", iamInstanceProfileId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`iamInstanceProfileId`] = iamInstanceProfileId
 		instance.ObjectMeta.Annotations[`iamInstanceProfileArn`] = iamInstanceProfileArn
@@ -152,7 +152,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteInstanceProfile(&iam.DeleteInstanceProfileInput{
@@ -190,7 +190,7 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -236,10 +236,10 @@ func (r *ReconcileIAMInstanceProfile) Reconcile(request reconcile.Request) (reco
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted IAMInstanceProfile and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted IAMInstanceProfile and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

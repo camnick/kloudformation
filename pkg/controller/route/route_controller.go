@@ -108,12 +108,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.RouteTableName, Namespace: instance.Namespace}, routeTable)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find RouteTable")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified RouteTable")
 				return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 			}
 			return reconcile.Result{}, err
 		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "RouteTable has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified RouteTable has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`RouteTable not ready`)
 		}
 
@@ -123,15 +123,15 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find an InternetGateway, will check for NATGateway")
 				//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 			}
 			//return reconcile.Result{}, err
 		} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "InternetGateway has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified InternetGateway has no ID annotation")
 			//return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 		} else if err == nil {
-			r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
+			r.events.Eventf(instance, `Normal`, `CreateAttempt`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
 			validTarget = true
 		}
 
@@ -139,20 +139,20 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.NatGatewayName, Namespace: instance.Namespace}, natGateway)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find NATGateway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find a NATGateway")
 				//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
 			}
 			//return reconcile.Result{}, err
 		} else if len(natGateway.ObjectMeta.Annotations[`natGatewayId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "NATGateway has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified NATGateway has no ID annotation")
 			//return reconcile.Result{}, fmt.Errorf(`NATGateway not ready`)
 		} else if err == nil {
-			r.events.Eventf(instance, `Warning`, `CreateAttempt`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
+			r.events.Eventf(instance, `Normal`, `CreateAttempt`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
 			validTarget = true
 		}
 
 		if validTarget != true {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready`)
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready/found`)
 			return reconcile.Result{}, fmt.Errorf(`Route target not ready/found`)
 		}
 
@@ -181,7 +181,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			return reconcile.Result{}, fmt.Errorf(`createOutput.return was nil`)
 		}
 		routeCreated = "yes"
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Route and added to RouteTable (%s)", routeTable.ObjectMeta.Annotations[`routeTableId`])
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS Route and added to RouteTable (%s)", routeTable.ObjectMeta.Annotations[`routeTableId`])
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`associatedRouteTableId`] = routeTable.ObjectMeta.Annotations[`routeTableId`]
 		instance.ObjectMeta.Annotations[`routeCreated`] = routeCreated
@@ -202,18 +202,18 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		routeList := []string{}
 		err = json.Unmarshal([]byte(routeTable.ObjectMeta.Annotations[`routeList`]), &routeList)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse route list`)
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Failed to parse route list`)
 		}
 		routeList = append(routeList, instance.Name)
 		newAnnotation, err := json.Marshal(routeList)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update route list`)
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Failed to update route list`)
 		}
 		routeTable.ObjectMeta.Annotations[`routeList`] = string(newAnnotation)
 		err = r.Update(context.TODO(), routeTable)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Couldn't update Route Table annotations: %s`, err.Error())
-			r.events.Eventf(routeTable, `Warning`, `ResourceUpdateFailure`, `Couldn't update Route Table annotations %s:`, err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Couldn't update Route Table annotations: %s`, err.Error())
+			r.events.Eventf(routeTable, `Warning`, `UpdateFailure`, `Couldn't update Route Table annotations %s:`, err.Error())
 		}
 
 		err = r.Update(context.TODO(), instance)
@@ -227,7 +227,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 			deleteOutput, ierr := svc.DeleteRoute(&ec2.DeleteRouteInput{
 				RouteTableId:         aws.String(instance.ObjectMeta.Annotations[`associatedRouteTableId`]),
@@ -265,32 +265,8 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
-		/*
-			// Make sure that there are tags to add before attempting to add them.
-			if len(instance.Spec.Tags) >= 1 {
-				// Tag the new Route
-				ts := []*ec2.Tag{}
-				for _, t := range instance.Spec.Tags {
-					ts = append(ts, &ec2.Tag{
-						Key:   aws.String(t.Key),
-						Value: aws.String(t.Value),
-					})
-				}
-				tagOutput, err := svc.CreateTags(&ec2.CreateTagsInput{
-					Resources: []*string{aws.String(routeid)},
-					Tags:      ts,
-				})
-				if err != nil {
-					r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
-					return reconcile.Result{}, err
-				}
-				if tagOutput == nil {
-					return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
-				}
-				r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
-			}
-		*/
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
+
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
 		routeTable := &eccv1alpha1.RouteTable{}
@@ -300,7 +276,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find RouteTable- Will attempt to delete anyway")
 			}
 		} else if len(routeTable.ObjectMeta.Annotations[`routeTableId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `LookupFailure`, "RouteTable has no ID annotation- Will attempt to delete anyway")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "RouteTable has no ID annotation- Will attempt to delete anyway")
 		}
 
 		validTarget := false
@@ -309,12 +285,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.GatewayName, Namespace: instance.Namespace}, internetGateway)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find InternetGateway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find an InternetGateway, will check for a NATGateway")
 			}
 		} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `LookupFailure`, "InternetGateway has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "InternetGateway has no ID annotation")
 		} else if err == nil {
-			r.events.Eventf(instance, `Warning`, `ResourceLookup`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
+			r.events.Eventf(instance, `Normal`, `DeleteAttempt`, `Found InternetGateway %s`, internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
 			validTarget = true
 		}
 
@@ -327,12 +303,12 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		} else if len(natGateway.ObjectMeta.Annotations[`natGatewayId`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `LookupFailure`, "NATGateway has no ID annotation")
 		} else if err == nil {
-			r.events.Eventf(instance, `Warning`, `ResourceLookup`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
+			r.events.Eventf(instance, `Normal`, `DeleteAttempt`, `Found NATGateway %s`, natGateway.ObjectMeta.Annotations[`natGatewayId`])
 			validTarget = true
 		}
 
 		if validTarget != true {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready- Will attempt to delete anyway`)
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, `Valid route target not ready/found- Will attempt to delete anyway`)
 		}
 
 		// check for other Finalizers
@@ -369,7 +345,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		routeList := []string{}
 		err = json.Unmarshal([]byte(routeTable.ObjectMeta.Annotations[`routeList`]), &routeList)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to parse route list`)
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Failed to parse route list`)
 
 		}
 		for i, f := range routeList {
@@ -379,7 +355,7 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 		newAnnotation, err := json.Marshal(routeList)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, `Failed to update route list`)
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, `Failed to update route list`)
 		}
 		routeTable.ObjectMeta.Annotations[`routeList`] = string(newAnnotation)
 
@@ -406,18 +382,18 @@ func (r *ReconcileRoute) Reconcile(request reconcile.Request) (reconcile.Result,
 
 		err = r.Update(context.TODO(), routeTable)
 		if err != nil {
-			r.events.Eventf(routeTable, `Warning`, `ResourceUpdateFailure`, `Unable to remove annotation: %s`, err.Error())
+			r.events.Eventf(routeTable, `Warning`, `UpdateFailure`, `Unable to remove annotation: %s`, err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, `Deleted AWS Route annotation`)
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, `Deleted AWS Route annotation`)
 
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Route and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted Route and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

@@ -463,7 +463,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 				r.events.Eventf(ec2KeyPair, `Warning`, `UpdateFailure`, "Unable to remove annotation: %s", err.Error())
 				return reconcile.Result{}, err
 			}
-			r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2KeyPair annotation")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Deleted EC2KeyPair annotation")
 		}
 
 		//remove instance from security group list
@@ -499,7 +499,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 				r.events.Eventf(ec2SecurityGroup, `Warning`, `UpdateFailure`, "Unable to remove annotation: %s", err.Error())
 				return reconcile.Result{}, err
 			}
-			r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2SecurityGroup annotation")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Deleted EC2SecurityGroup annotation")
 		}
 
 		//remove instance from subnet hosted list
@@ -535,7 +535,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 				r.events.Eventf(subnet, `Warning`, `UpdateFailure`, "Unable to remove annotation: %s", err.Error())
 				return reconcile.Result{}, err
 			}
-			r.events.Event(instance, `Normal`, `Deleted`, "Deleted Subnet annotation")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Deleted Subnet annotation")
 		}
 		// remove the finalizer
 		for i, f := range instance.ObjectMeta.Finalizers {
@@ -552,7 +552,7 @@ func (r *ReconcileEC2Instance) Reconcile(request reconcile.Request) (reconcile.R
 			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2Instance and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted EC2Instance and removed finalizers")
 
 	}
 

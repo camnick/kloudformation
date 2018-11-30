@@ -108,7 +108,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified Subnet")
 				return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 			}
 			return reconcile.Result{}, err
@@ -121,7 +121,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EIPAllocationName, Namespace: instance.Namespace}, eip)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified EIP Allocation")
 				return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 			}
 			return reconcile.Result{}, err
@@ -134,7 +134,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Get(context.TODO(), types.NamespacedName{Name: subnet.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC")
 				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 			}
 			return reconcile.Result{}, err
@@ -163,7 +163,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 		natGatewayId = *createOutput.NatGateway.NatGatewayId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS NATGateway (%s)", natGatewayId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS NATGateway (%s)", natGatewayId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`natGatewayId`] = natGatewayId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `natgateways.ecc.aws.gotopple.com`)
@@ -178,7 +178,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteNatGateway(&ec2.DeleteNatGatewayInput{
@@ -216,7 +216,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
@@ -233,7 +233,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 				Tags:      ts,
 			})
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Tagging failed: %s", err.Error())
 				return reconcile.Result{}, err
 			}
 			if tagOutput == nil {
@@ -248,10 +248,10 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.SubnetName, Namespace: instance.Namespace}, subnet)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find Subnet- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified Subnet- Deleting anyway")
 			}
 		} else if len(subnet.ObjectMeta.Annotations[`subnetid`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Subnet has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Subnet has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`Subnet not ready`)
 		}
 
@@ -259,7 +259,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EIPAllocationName, Namespace: instance.Namespace}, eip)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified EIP Allocation- Deleting anyway")
 			}
 		} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP allocation has ID annotation")
@@ -270,7 +270,7 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		err = r.Get(context.TODO(), types.NamespacedName{Name: subnet.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC- Deleting anyway")
 			}
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
 			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
@@ -319,10 +319,10 @@ func (r *ReconcileNATGateway) Reconcile(request reconcile.Request) (reconcile.Re
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted NATGateway and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted NATGateway and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

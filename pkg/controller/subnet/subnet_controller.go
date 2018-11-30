@@ -107,12 +107,12 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC not ready")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specifed VPC not ready")
 				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 			}
 			return reconcile.Result{}, err
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "vpcid annotation is 0 len")
+			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Specified VPC has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 
@@ -139,7 +139,7 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 		subnetid = *createOutput.Subnet.SubnetId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Subnet (%s)", subnetid)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS Subnet (%s)", subnetid)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`subnetid`] = subnetid
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `subnets.ecc.aws.gotopple.com`)
@@ -155,7 +155,7 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteSubnet(&ec2.DeleteSubnetInput{
@@ -193,7 +193,7 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
@@ -210,13 +210,13 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 				Tags:      ts,
 			})
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Tagging failed: %s", err.Error())
 				return reconcile.Result{}, err
 			}
 			if tagOutput == nil {
 				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
 			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -224,10 +224,10 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC not ready- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified VPC not ready- Deleting anyway")
 			}
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "vpcid annotation is 0 len")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Specified VPC has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 
@@ -273,10 +273,10 @@ func (r *ReconcileSubnet) Reconcile(request reconcile.Request) (reconcile.Result
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Subnet and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted Subnet and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

@@ -107,7 +107,7 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified VPC")
 				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 			}
 			return reconcile.Result{}, err
@@ -120,7 +120,7 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.InternetGatewayName, Namespace: instance.Namespace}, internetGateway)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified InternetGateway")
 				return reconcile.Result{}, fmt.Errorf(`InternetGateway not ready`)
 			}
 			return reconcile.Result{}, err
@@ -145,7 +145,7 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 		internetGatewayAttached = "yes"
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`internetGatewayAttached`] = internetGatewayAttached
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Internet Gateway Attachment with VPC (%s) and InternetGateway (%s) ", vpc.ObjectMeta.Annotations[`vpcid`], internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS Internet Gateway Attachment with VPC (%s) and InternetGateway (%s) ", vpc.ObjectMeta.Annotations[`vpcid`], internetGateway.ObjectMeta.Annotations[`internetGatewayId`])
 		instance.ObjectMeta.Annotations[`attachedVpcId`] = vpc.ObjectMeta.Annotations[`vpcid`]
 		instance.ObjectMeta.Annotations[`attachedInternetGatewayId`] = internetGateway.ObjectMeta.Annotations[`internetGatewayId`]
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `internetgatewayattachments.ecc.aws.gotopple.com`)
@@ -161,7 +161,7 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DetachInternetGateway(&ec2.DetachInternetGatewayInput{
@@ -200,7 +200,7 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -209,11 +209,11 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find VPC- Deleting anyway")
 				vpcFound = false
 			}
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "VPC has no ID annotation")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "VPC has no ID annotation")
 			return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 		}
 
@@ -222,7 +222,7 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.InternetGatewayName, Namespace: instance.Namespace}, internetGateway)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find InternetGateway- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find InternetGateway- Deleting anyway")
 				internetGatewayFound = false
 			}
 		} else if len(internetGateway.ObjectMeta.Annotations[`internetGatewayId`]) <= 0 {
@@ -274,10 +274,10 @@ func (r *ReconcileInternetGatewayAttachment) Reconcile(request reconcile.Request
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted InternetGatewayAttachment and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted InternetGatewayAttachment and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

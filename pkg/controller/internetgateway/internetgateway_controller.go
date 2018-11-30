@@ -253,7 +253,7 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 				if aerr, ok := err.(awserr.Error); ok {
 					switch aerr.Code() {
 					case `DependencyViolation`:
-						r.events.Eventf(instance, `Normal`, `DependencyViolation`, `The InternetGateway cannot be deleted: %s`, err.Error())
+						r.events.Eventf(instance, `Normal`, `DeleteFailure`, `The InternetGateway cannot be deleted: %s`, err.Error())
 						return reconcile.Result{}, err
 					case `InvalidInternetGatewayID.NotFound`:
 						// we want to keep going

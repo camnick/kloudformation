@@ -161,7 +161,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			},
 		}
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2KeyPair (%s)", awsKeyName)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS EC2KeyPair (%s)", awsKeyName)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`awsKeyName`] = awsKeyName
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2keypairs.ecc.aws.gotopple.com`)
@@ -177,7 +177,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteKeyPair(&ec2.DeleteKeyPairInput{
@@ -215,7 +215,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		// logic to generate kubernetes secret based off ec2keypair here
 		// create the Secret from the keySecret struct
@@ -226,7 +226,7 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 		//log creation
-		r.events.Event(keySecret, `Normal`, `Created`, "Kubernetes secret created")
+		r.events.Event(keySecret, `Normal`, `CreateSuccess`, "Kubernetes secret created")
 		//add finalizer to keySecret
 		// next line breaks stuff
 		//keySecret.ObjectMeta.Finalizers = append(keySecret.ObjectMeta.Finalizers, `kubernetes`)
@@ -242,13 +242,13 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 
 			r.events.Eventf(keySecret,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			// Delete the secret logic here
 			return reconcile.Result{}, err
 		}
-		r.events.Event(keySecret, `Normal`, `Annotated`, "Added finalizer")
+		r.events.Event(keySecret, `Normal`, `UpdateSuccess`, "Added finalizer")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -302,11 +302,11 @@ func (r *ReconcileEC2KeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
 
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2KeyPair and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted EC2KeyPair and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

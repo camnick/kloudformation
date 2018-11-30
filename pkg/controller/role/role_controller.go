@@ -137,7 +137,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		}
 		roleName := *createOutput.Role.RoleName
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Role (%s)", roleId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS Role (%s)", roleId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`awsRoleId`] = roleId
 		instance.ObjectMeta.Annotations[`awsRoleArn`] = roleArn
@@ -155,7 +155,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteRole(&iam.DeleteRoleInput{
@@ -193,7 +193,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -239,10 +239,10 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Role and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted Role and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

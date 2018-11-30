@@ -108,7 +108,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified Role not found")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified Role")
 				return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 			}
 			return reconcile.Result{}, err
@@ -121,7 +121,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamInstanceProfileName, Namespace: instance.Namespace}, instanceProfile)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified IAMInstanceProfile not found")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified IAMInstanceProfile")
 				return reconcile.Result{}, fmt.Errorf(`IAMInstanceProfile not ready`)
 			}
 			return reconcile.Result{}, err
@@ -219,7 +219,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified Role not found- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified Role- Deleting anyway")
 				roleFound = false
 			}
 		} else if len(role.ObjectMeta.Annotations[`awsRoleName`]) <= 0 {
@@ -232,7 +232,7 @@ func (r *ReconcileAddRoleToInstanceProfile) Reconcile(request reconcile.Request)
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamInstanceProfileName, Namespace: instance.Namespace}, instanceProfile)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Specified IAMInstanceProfile not found- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified IAMInstanceProfile- Deleting anyway")
 				instanceProfileFound = false
 			}
 		} else if len(instanceProfile.ObjectMeta.Annotations[`awsInstanceProfileName`]) <= 0 {

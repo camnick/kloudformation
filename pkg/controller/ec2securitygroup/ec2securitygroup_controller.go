@@ -107,7 +107,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC")
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find specified VPC")
 				return reconcile.Result{}, fmt.Errorf(`VPC not ready`)
 			}
 			return reconcile.Result{}, err
@@ -136,7 +136,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		}
 		ec2SecurityGroupId = *createOutput.GroupId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EC2SecurityGroup (%s)", ec2SecurityGroupId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS EC2SecurityGroup (%s)", ec2SecurityGroupId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`ec2SecurityGroupId`] = ec2SecurityGroupId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `ec2securitygroups.ecc.aws.gotopple.com`)
@@ -152,7 +152,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteSecurityGroup(&ec2.DeleteSecurityGroupInput{
@@ -190,7 +190,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
 			// Tag the new security group
@@ -212,7 +212,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 			if tagOutput == nil {
 				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
 			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added tags")
 		}
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
@@ -222,7 +222,7 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.VPCName, Namespace: instance.Namespace}, vpc)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find VPC- Will attempt delete anyway")
+				r.events.Eventf(instance, `Warning`, `CreateAttempt`, "Can't find specified VPC- Will attempt delete anyway")
 				vpcFound = false
 			}
 		} else if len(vpc.ObjectMeta.Annotations[`vpcid`]) <= 0 {
@@ -273,10 +273,10 @@ func (r *ReconcileEC2SecurityGroup) Reconcile(request reconcile.Request) (reconc
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted EC2SecurityGroup and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted EC2SecurityGroup and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

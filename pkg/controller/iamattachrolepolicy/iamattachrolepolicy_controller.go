@@ -108,7 +108,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified Role: %s", err.Error())
 				return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 			}
 			return reconcile.Result{}, err
@@ -121,7 +121,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamPolicyName, Namespace: instance.Namespace}, policy)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not found: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified IAMPolicy: %s", err.Error())
 				return reconcile.Result{}, fmt.Errorf(`IAMPolicy not ready`)
 			}
 			return reconcile.Result{}, err
@@ -144,7 +144,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		}
 
 		iamRolePolicyAttached = "yes"
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMAttachRolePolicy")
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS IAMAttachRolePolicy")
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`iamRolePolicyAttached`] = iamRolePolicyAttached
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `iamattachrolepolicies.iam.aws.gotopple.com`)
@@ -160,7 +160,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DetachRolePolicy(&iam.DetachRolePolicyInput{
@@ -199,7 +199,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -208,11 +208,11 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamRoleName, Namespace: instance.Namespace}, role)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not found- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified Role- Deleting anyway")
 				roleFound = false
 			}
 		} else if len(role.ObjectMeta.Annotations[`awsRoleId`]) <= 0 {
-			r.events.Eventf(instance, `Warning`, `CreateFailure`, "Role not ready")
+			r.events.Eventf(instance, `Warning`, `DeleteFailure`, "Role not ready")
 			return reconcile.Result{}, fmt.Errorf(`Role not ready`)
 		}
 
@@ -221,7 +221,7 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.IamPolicyName, Namespace: instance.Namespace}, policy)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "IAMPolicy not found- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specifed IAMPolicy- Deleting anyway")
 				policyFound = false
 			}
 		} else if len(policy.ObjectMeta.Annotations[`iamPolicyArn`]) <= 0 {
@@ -273,10 +273,10 @@ func (r *ReconcileIAMAttachRolePolicy) Reconcile(request reconcile.Request) (rec
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted IAMAttachRolePolicy and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted IAMAttachRolePolicy and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

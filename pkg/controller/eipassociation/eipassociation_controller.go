@@ -107,7 +107,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.AllocationName, Namespace: instance.Namespace}, eip)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified EIP Allocation")
 				return reconcile.Result{}, fmt.Errorf(`EIP not ready`)
 			}
 			return reconcile.Result{}, err
@@ -120,7 +120,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified EC2Instance")
 				return reconcile.Result{}, fmt.Errorf(`EC2Instance not ready`)
 			}
 			return reconcile.Result{}, err
@@ -148,7 +148,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		}
 		eipAssociationId = *associateOutput.AssociationId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS EIP Association (%s)", eipAssociationId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS EIP Association (%s)", eipAssociationId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`eipAssociationId`] = eipAssociationId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `eipassociations.ecc.aws.gotopple.com`)
@@ -164,7 +164,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			disassociateOutput, ierr := svc.DisassociateAddress(&ec2.DisassociateAddressInput{
@@ -202,9 +202,8 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
-		// Make sure that there are tags to add before attempting to add them.
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
 		eipFound := true
@@ -212,7 +211,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.AllocationName, Namespace: instance.Namespace}, eip)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "EIP Allocation not found- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specified EIP Allocation- Deleting anyway")
 				eipFound = false
 			}
 		} else if len(eip.ObjectMeta.Annotations[`eipAllocationId`]) <= 0 {
@@ -225,7 +224,7 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		err = r.Get(context.TODO(), types.NamespacedName{Name: instance.Spec.EC2InstanceName, Namespace: instance.Namespace}, ec2Instance)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				r.events.Eventf(instance, `Warning`, `CreateFailure`, "Can't find EC2Instance- Deleting anyway")
+				r.events.Eventf(instance, `Warning`, `LookupFailure`, "Can't find specifed EC2Instance- Deleting anyway")
 				ec2InstanceFound = false
 			}
 		} else if len(ec2Instance.ObjectMeta.Annotations[`ec2InstanceId`]) <= 0 {
@@ -276,10 +275,10 @@ func (r *ReconcileEIPAssociation) Reconcile(request reconcile.Request) (reconcil
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Disassociated address and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Disassociated address and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

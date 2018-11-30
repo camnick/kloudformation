@@ -121,7 +121,7 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 		}
 		vpcid = *createOutput.Vpc.VpcId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS VPC (%s)", vpcid)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS VPC (%s)", vpcid)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`vpcid`] = vpcid
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `vpcs.ecc.aws.gotopple.com`)
@@ -137,7 +137,7 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteVpc(&ec2.DeleteVpcInput{
@@ -163,7 +163,7 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
@@ -180,13 +180,13 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 				Tags:      ts,
 			})
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Tagging failed: %s", err.Error())
 				return reconcile.Result{}, err
 			}
 			if tagOutput == nil {
 				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
 			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -234,10 +234,10 @@ func (r *ReconcileVPC) Reconcile(request reconcile.Request) (reconcile.Result, e
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted VPC and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted VPC and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

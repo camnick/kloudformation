@@ -136,7 +136,7 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 		iamPolicyAwsName := *createOutput.Policy.PolicyName
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS IAMPolicy (%s)", iamPolicyId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS IAMPolicy (%s)", iamPolicyId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`iamPolicyId`] = iamPolicyId
 		instance.ObjectMeta.Annotations[`iamPolicyArn`] = iamPolicyArn
@@ -154,7 +154,7 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeletePolicy(&iam.DeletePolicyInput{
@@ -192,7 +192,7 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 		// check for other Finalizers
@@ -237,10 +237,10 @@ func (r *ReconcileIAMPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted IAMPolicy and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted IAMPolicy and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil

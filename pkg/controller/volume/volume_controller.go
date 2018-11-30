@@ -134,7 +134,7 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 		volumeId = *createOutput.VolumeId
 
-		r.events.Eventf(instance, `Normal`, `Created`, "Created AWS Volume (%s)", volumeId)
+		r.events.Eventf(instance, `Normal`, `CreateSuccess`, "Created AWS Volume (%s)", volumeId)
 		instance.ObjectMeta.Annotations = make(map[string]string)
 		instance.ObjectMeta.Annotations[`volumeId`] = volumeId
 		instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, `volumes.ecc.aws.gotopple.com`)
@@ -150,7 +150,7 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 
 			r.events.Eventf(instance,
 				`Warning`,
-				`ResourceUpdateFailure`,
+				`UpdateFailure`,
 				"Failed to update the resource: %s", err.Error())
 
 			deleteOutput, ierr := svc.DeleteVolume(&ec2.DeleteVolumeInput{
@@ -188,7 +188,7 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 			}
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Annotated`, "Added finalizer and annotations")
+		r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added finalizer and annotations")
 
 		// Make sure that there are tags to add before attempting to add them.
 		if len(instance.Spec.Tags) >= 1 {
@@ -205,13 +205,13 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 				Tags:      ts,
 			})
 			if err != nil {
-				r.events.Eventf(instance, `Warning`, `TaggingFailure`, "Tagging failed: %s", err.Error())
+				r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Tagging failed: %s", err.Error())
 				return reconcile.Result{}, err
 			}
 			if tagOutput == nil {
 				return reconcile.Result{}, fmt.Errorf(`CreateTagsOutput was nil`)
 			}
-			r.events.Event(instance, `Normal`, `Tagged`, "Added tags")
+			r.events.Event(instance, `Normal`, `UpdateSuccess`, "Added tags")
 		}
 	} else if instance.ObjectMeta.DeletionTimestamp != nil {
 
@@ -257,10 +257,10 @@ func (r *ReconcileVolume) Reconcile(request reconcile.Request) (reconcile.Result
 		// after a successful delete update the resource with the removed finalizer
 		err = r.Update(context.TODO(), instance)
 		if err != nil {
-			r.events.Eventf(instance, `Warning`, `ResourceUpdateFailure`, "Unable to remove finalizer: %s", err.Error())
+			r.events.Eventf(instance, `Warning`, `UpdateFailure`, "Unable to remove finalizer: %s", err.Error())
 			return reconcile.Result{}, err
 		}
-		r.events.Event(instance, `Normal`, `Deleted`, "Deleted Volume and removed finalizers")
+		r.events.Event(instance, `Normal`, `DeleteSuccess`, "Deleted Volume and removed finalizers")
 	}
 
 	return reconcile.Result{}, nil
