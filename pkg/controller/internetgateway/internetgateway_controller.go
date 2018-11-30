@@ -257,7 +257,6 @@ func (r *ReconcileInternetGateway) Reconcile(request reconcile.Request) (reconci
 						return reconcile.Result{}, err
 					case `InvalidInternetGatewayID.NotFound`:
 						// we want to keep going
-						// event type was changed from 'Success' to 'Normal', because i got an error that 'Success' wasn't supported
 						r.events.Eventf(instance, `Normal`, `AlreadyDeleted`, "The InternetGateway: %s was already deleted", err.Error())
 					default:
 						return reconcile.Result{}, err
